@@ -1909,7 +1909,16 @@ ZEND_API void zend_check_magic_method_implementation(const zend_class_entry *ce,
 		} else if (ARG_SHOULD_BE_SENT_BY_REF(fptr, 1) || ARG_SHOULD_BE_SENT_BY_REF(fptr, 2)) {
 			zend_error(error_type, "Method %s::%s() cannot take arguments by reference", ce->name, ZEND_CALL_FUNC_NAME);
 		}
-	} else if (name_len == sizeof(ZEND_CALLSTATIC_FUNC_NAME) - 1 &&
+	} else if (name_len == sizeof(ZEND_COMPARE_FUNC_NAME) - 1 &&
+	        !memcmp(lcname, ZEND_COMPARE_FUNC_NAME, sizeof(ZEND_COMPARE_FUNC_NAME)-1)
+	    ) {
+	        if (fptr->common.num_args != 1) {
+	            zend_error(error_type, "Method %s::%s() must take exactly 1 arguments", ce->name, ZEND_COMPARE_FUNC_NAME);
+	        } else if (ARG_SHOULD_BE_SENT_BY_REF(fptr, 1)) {
+	            zend_error(error_type, "Method %s::%s() cannot take arguments by reference", ce->name, ZEND_COMPARE_FUNC_NAME);
+	        }
+	    }
+	else if (name_len == sizeof(ZEND_CALLSTATIC_FUNC_NAME) - 1 &&
 		!memcmp(lcname, ZEND_CALLSTATIC_FUNC_NAME, sizeof(ZEND_CALLSTATIC_FUNC_NAME)-1)
 	) {
 		if (fptr->common.num_args != 2) {
@@ -1934,7 +1943,7 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 	int count=0, unload=0, result=0;
 	HashTable *target_function_table = function_table;
 	int error_type;
-	zend_function *ctor = NULL, *dtor = NULL, *clone = NULL, *__get = NULL, *__set = NULL, *__unset = NULL, *__isset = NULL, *__call = NULL, *__callstatic = NULL, *__tostring = NULL;
+	zend_function *ctor = NULL, *dtor = NULL, *clone = NULL, *__get = NULL, *__set = NULL, *__unset = NULL, *__isset = NULL, *__call = NULL, *__callstatic = NULL, *__compare = NULL, *__tostring = NULL;
 	const char *lowercase_name;
 	int fname_len;
 	const char *lc_class_name = NULL;
@@ -2075,7 +2084,9 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 				__set = reg_function;
 			} else if ((fname_len == sizeof(ZEND_UNSET_FUNC_NAME)-1) && !memcmp(lowercase_name, ZEND_UNSET_FUNC_NAME, sizeof(ZEND_UNSET_FUNC_NAME))) {
 				__unset = reg_function;
-			} else if ((fname_len == sizeof(ZEND_ISSET_FUNC_NAME)-1) && !memcmp(lowercase_name, ZEND_ISSET_FUNC_NAME, sizeof(ZEND_ISSET_FUNC_NAME))) {
+			} else if ((fname_len == sizeof(ZEND_COMPARE_FUNC_NAME)-1) && !memcmp(lowercase_name, ZEND_COMPARE_FUNC_NAME, sizeof(ZEND_COMPARE_FUNC_NAME))) {
+                __compare = reg_function;
+            } else if ((fname_len == sizeof(ZEND_ISSET_FUNC_NAME)-1) && !memcmp(lowercase_name, ZEND_ISSET_FUNC_NAME, sizeof(ZEND_ISSET_FUNC_NAME))) {
 				__isset = reg_function;
 			} else {
 				reg_function = NULL;
@@ -2115,6 +2126,7 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 		scope->__set = __set;
 		scope->__unset = __unset;
 		scope->__isset = __isset;
+		scope->__compare = __compare;
 		if (ctor) {
 			ctor->common.fn_flags |= ZEND_ACC_CTOR;
 			if (ctor->common.fn_flags & ZEND_ACC_STATIC) {
@@ -2171,6 +2183,12 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 				zend_error(error_type, "Method %s::%s() cannot be static", scope->name, __unset->common.function_name);
 			}
 			__unset->common.fn_flags &= ~ZEND_ACC_ALLOW_STATIC;
+		}
+		if (__compare) {
+		            if (__compare->common.fn_flags & ZEND_ACC_STATIC) {
+		                zend_error(error_type, "Method %s::%s() cannot be static", scope->name, __compare->common.function_name);
+		            }
+		            __compare->common.fn_flags &= ~ZEND_ACC_ALLOW_STATIC;
 		}
 		if (__isset) {
 			if (__isset->common.fn_flags & ZEND_ACC_STATIC) {

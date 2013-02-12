@@ -1618,7 +1618,11 @@ void zend_do_begin_function_declaration(znode *function_token, znode *function_n
 				if (fn_flags & ((ZEND_ACC_PPP_MASK | ZEND_ACC_STATIC) ^ ZEND_ACC_PUBLIC)) {
 					zend_error(E_WARNING, "The magic method __toString() must have public visibility and cannot be static");
 				}
-			}
+			} else if ((name_len == sizeof(ZEND_COMPARE_FUNC_NAME)-1) && (!memcmp(lcname, ZEND_COMPARE_FUNC_NAME, sizeof(ZEND_COMPARE_FUNC_NAME)-1))) {
+                if (fn_flags & ((ZEND_ACC_PPP_MASK | ZEND_ACC_STATIC) ^ ZEND_ACC_PUBLIC)) {
+                    zend_error(E_WARNING, "The magic method __compare() must have public visibility and cannot be static");
+                }
+            }
 		} else {
 			char *class_lcname;
 			
@@ -1674,6 +1678,11 @@ void zend_do_begin_function_declaration(znode *function_token, znode *function_n
 					zend_error(E_WARNING, "The magic method __toString() must have public visibility and cannot be static");
 				}				
 				CG(active_class_entry)->__tostring = (zend_function *) CG(active_op_array);
+			}  else if ((name_len == sizeof(ZEND_COMPARE_FUNC_NAME)-1) && (!memcmp(lcname, ZEND_COMPARE_FUNC_NAME, sizeof(ZEND_COMPARE_FUNC_NAME)-1))) {
+                if (fn_flags & ((ZEND_ACC_PPP_MASK | ZEND_ACC_STATIC) ^ ZEND_ACC_PUBLIC)) {
+                    zend_error(E_WARNING, "The magic method __compare() must have public visibility and cannot be static");
+                }
+                CG(active_class_entry)->__compare = (zend_function *) CG(active_op_array);
 			} else if (!(fn_flags & ZEND_ACC_STATIC)) {
 				CG(active_op_array)->fn_flags |= ZEND_ACC_ALLOW_STATIC;
 			}
@@ -2837,6 +2846,9 @@ static void do_inherit_parent_constructor(zend_class_entry *ce) /* {{{ */
 	if (!ce->__callstatic) {
 		ce->__callstatic = ce->parent->__callstatic;
 	}
+	if(!ce->__compare) {
+	    ce->__compare = ce->parent->__compare;
+	}
 	if (!ce->__tostring) {
 		ce->__tostring = ce->parent->__tostring;
 	}
@@ -3657,7 +3669,9 @@ static void zend_add_magic_methods(zend_class_entry* ce, const char* mname, uint
 		ce->__set = fe;
 	} else if (!strncmp(mname, ZEND_CALL_FUNC_NAME, mname_len)) {
 		ce->__call = fe;
-	} else if (!strncmp(mname, ZEND_UNSET_FUNC_NAME, mname_len)) {
+	} else if (!strncmp(mname, ZEND_COMPARE_FUNC_NAME, mname_len)) {
+        ce->__compare = fe;
+    }  else if (!strncmp(mname, ZEND_UNSET_FUNC_NAME, mname_len)) {
 		ce->__unset = fe;
 	} else if (!strncmp(mname, ZEND_ISSET_FUNC_NAME, mname_len)) {
 		ce->__isset = fe;
@@ -6615,6 +6629,7 @@ ZEND_API void zend_initialize_class_data(zend_class_entry *ce, zend_bool nullify
 		ce->__isset = NULL;
 		ce->__call = NULL;
 		ce->__callstatic = NULL;
+		ce->__compare = NULL;
 		ce->__tostring = NULL;
 		ce->create_object = NULL;
 		ce->get_iterator = NULL;
