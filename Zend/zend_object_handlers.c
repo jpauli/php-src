@@ -200,14 +200,15 @@ static int zend_std_call_setter(zval *object, zval *member, zval *value TSRMLS_D
 ZEND_API void zend_std_call_user_compare(zval *object, zval *to TSRMLS_DC) /* {{{ */
 {
     zend_class_entry *ce = Z_OBJCE_P(object);
-
+    zval *retval = NULL;
+    ALLOC_INIT_ZVAL(retval);
     /* __compare handler is called with one argument:
           zval to
     */
 
     SEPARATE_ARG_IF_REF(to);
 
-    zend_call_method_with_1_params(&object, ce, &ce->__compare, ZEND_COMPARE_FUNC_NAME, NULL, to);
+    zend_call_method_with_1_params(&object, ce, &ce->__compare, ZEND_COMPARE_FUNC_NAME, &retval, to);
 
     zval_ptr_dtor(&to);
 }
