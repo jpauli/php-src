@@ -197,20 +197,30 @@ static int zend_std_call_setter(zval *object, zval *member, zval *value TSRMLS_D
 }
 /* }}} */
 
-ZEND_API void zend_std_call_user_compare(zval *object, zval *to TSRMLS_DC) /* {{{ */
+ZEND_API int zend_std_call_user_compare(zval *object, zval *to TSRMLS_DC) /* {{{ */
 {
     zend_class_entry *ce = Z_OBJCE_P(object);
-    zval *retval = NULL;
-    ALLOC_INIT_ZVAL(retval);
     /* __compare handler is called with one argument:
           zval to
     */
+    zval *retval = NULL;
+    int result;
 
     SEPARATE_ARG_IF_REF(to);
 
     zend_call_method_with_1_params(&object, ce, &ce->__compare, ZEND_COMPARE_FUNC_NAME, &retval, to);
 
     zval_ptr_dtor(&to);
+
+    if(retval) {
+        result = i_zend_is_true(retval) ? SUCCESS : FAILURE;
+        zval_ptr_dtor(&retval);
+        return result;
+    } else {
+        return FAILURE;
+    }
+
+
 }
 
 static void zend_std_call_unsetter(zval *object, zval *member TSRMLS_DC) /* {{{ */
@@ -1354,6 +1364,11 @@ static int zend_std_compare_objects(zval *o1, zval *o2 TSRMLS_DC) /* {{{ */
 	if (zobj1->ce != zobj2->ce) {
 		return 1; /* different classes */
 	}
+
+	if(zobj1->ce->__compare) {
+	    return zend_std_call_user_compare(o1, o2);
+	}
+
 	if (!zobj1->properties && !zobj2->properties) {
 		int i;
 
