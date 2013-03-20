@@ -136,6 +136,7 @@ static HashTable basic_submodules;
 /* {{{ main/main.c */
 ZEND_BEGIN_ARG_INFO(arginfo_set_time_limit, 0)
 	ZEND_ARG_INFO(0, seconds)
+	ZEND_ARG_INFO(0, sig_type)
 ZEND_END_ARG_INFO()
 /* }}} */
 

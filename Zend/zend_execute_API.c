@@ -1447,7 +1447,7 @@ void zend_shutdown_timeout_thread(void) /* {{{ */
 #define SIGPROF 27
 #endif
 
-void zend_set_timeout(long seconds, int reset_signals) /* {{{ */
+void zend_set_timeout(long seconds, int reset_signals, zend_bool use_sigalrm) /* {{{ */
 {
 	TSRMLS_FETCH();
 
@@ -1479,9 +1479,14 @@ void zend_set_timeout(long seconds, int reset_signals) /* {{{ */
 		}
 		signo = SIGALRM;
 #	else
-			setitimer(ITIMER_PROF, &t_r, NULL);
-		}
-		signo = SIGPROF;
+			if (use_sigalrm) {
+				setitimer(ITIMER_REAL, &t_r, NULL);
+				signo = SIGALRM;
+			} else {
+				setitimer(ITIMER_PROF, &t_r, NULL);
+				signo = SIGPROF;
+			}
+	}
 #	endif
 
 		if (reset_signals) {

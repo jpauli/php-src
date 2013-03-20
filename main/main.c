@@ -316,7 +316,11 @@ static PHP_INI_MH(OnUpdateTimeout)
 	}
 	zend_unset_timeout(TSRMLS_C);
 	EG(timeout_seconds) = atoi(new_value);
-	zend_set_timeout(EG(timeout_seconds), 0);
+	zend_bool use_sigalrm = (zend_bool) 0;
+	if (mh_arg1) {
+		use_sigalrm = *(zend_bool *)mh_arg1;
+	}
+	zend_set_timeout(EG(timeout_seconds), 1, use_sigalrm);
 	return SUCCESS;
 }
 /* }}} */
@@ -523,7 +527,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("extension_dir",			PHP_EXTENSION_DIR,		PHP_INI_SYSTEM,		OnUpdateStringUnempty,	extension_dir,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("sys_temp_dir",			NULL,		PHP_INI_SYSTEM,		OnUpdateStringUnempty,	sys_temp_dir,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("include_path",			PHP_INCLUDE_PATH,		PHP_INI_ALL,		OnUpdateStringUnempty,	include_path,			php_core_globals,	core_globals)
-	PHP_INI_ENTRY("max_execution_time",			"30",		PHP_INI_ALL,			OnUpdateTimeout)
+	PHP_INI_ENTRY1_EX("max_execution_time",			"30",		PHP_INI_ALL,			OnUpdateTimeout,			0,			NULL)
 	STD_PHP_INI_ENTRY("open_basedir",			NULL,		PHP_INI_ALL,		OnUpdateBaseDir,			open_basedir,			php_core_globals,	core_globals)
 
 	STD_PHP_INI_BOOLEAN("file_uploads",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			file_uploads,			php_core_globals,	core_globals)
@@ -1262,10 +1266,18 @@ PHP_FUNCTION(set_time_limit)
 	long new_timeout;
 	char *new_timeout_str;
 	int new_timeout_strlen;
+	zend_bool sig_type;
+	zend_ini_entry *max_execution_time = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &new_timeout) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &new_timeout, &sig_type) == FAILURE) {
 		return;
 	}
+
+	if (zend_hash_find(EG(ini_directives), "max_execution_time", sizeof("max_execution_time"), (void **)&max_execution_time) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	max_execution_time->mh_arg1 = &sig_type;
 
 	new_timeout_strlen = zend_spprintf(&new_timeout_str, 0, "%ld", new_timeout);
 
@@ -1466,7 +1478,7 @@ static void php_message_handler_for_zend(long message, const void *data TSRMLS_D
 void php_on_timeout(int seconds TSRMLS_DC)
 {
 	PG(connection_status) |= PHP_CONNECTION_TIMEOUT;
-	zend_set_timeout(EG(timeout_seconds), 1);
+	zend_set_timeout(EG(timeout_seconds), 1, 0);
 	if(PG(exit_on_timeout)) sapi_terminate_process(TSRMLS_C);
 }
 
@@ -1501,7 +1513,7 @@ static int php_start_sapi(TSRMLS_D)
 			PG(connection_status) = PHP_CONNECTION_NORMAL;
 
 			zend_activate(TSRMLS_C);
-			zend_set_timeout(EG(timeout_seconds), 1);
+			zend_set_timeout(EG(timeout_seconds), 1, 0);
 			zend_activate_modules(TSRMLS_C);
 			PG(modules_activated)=1;
 		} zend_catch {
@@ -1554,9 +1566,9 @@ int php_request_startup(TSRMLS_D)
 #endif
 
 		if (PG(max_input_time) == -1) {
-			zend_set_timeout(EG(timeout_seconds), 1);
+			zend_set_timeout(EG(timeout_seconds), 1, 0);
 		} else {
-			zend_set_timeout(PG(max_input_time), 1);
+			zend_set_timeout(PG(max_input_time), 1, 0);
 		}
 
 		/* Disable realpath cache if an open_basedir is set */
@@ -2474,7 +2486,7 @@ PHPAPI int php_execute_script(zend_file_handle *primary_file TSRMLS_DC)
 #ifdef PHP_WIN32
 			zend_unset_timeout(TSRMLS_C);
 #endif
-			zend_set_timeout(INI_INT("max_execution_time"), 0);
+			zend_set_timeout(INI_INT("max_execution_time"), 0, 0);
 		}
 		retval = (zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, NULL, 3, prepend_file_p, primary_file, append_file_p) == SUCCESS);
 
