@@ -230,6 +230,7 @@ struct _zend_executor_globals {
 
 	/* timeout support */
 	int timeout_seconds;
+	zend_bool timeout_signal_is_alarm;
 
 	int lambda_count;
 

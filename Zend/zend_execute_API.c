@@ -195,6 +195,8 @@ void init_executor(TSRMLS_D) /* {{{ */
 
 	EG(active) = 1;
 	EG(start_op) = NULL;
+
+	EG(timeout_signal_is_alarm) = (zend_bool)0;
 }
 /* }}} */
 
@@ -1467,7 +1469,7 @@ void zend_set_timeout(long seconds, int reset_signals, zend_bool use_sigalrm) /*
 #else
 #	ifdef HAVE_SETITIMER
 	{
-		struct itimerval t_r;		/* timeout requested */
+		struct itimerval t_r, t_r2 = {0};		/* timeout requested */
 		int signo;
 
 		if(seconds) {
@@ -1479,11 +1481,20 @@ void zend_set_timeout(long seconds, int reset_signals, zend_bool use_sigalrm) /*
 		}
 		signo = SIGALRM;
 #	else
+
+			if (EG(timeout_signal_is_alarm) ^ use_sigalrm) {
+				reset_signals = 1; /* reset sighandler if sig num is changed */
+			}
+
+			EG(timeout_signal_is_alarm) = use_sigalrm;
+
 			if (use_sigalrm) {
 				setitimer(ITIMER_REAL, &t_r, NULL);
+				setitimer(ITIMER_PROF, &t_r2, NULL);
 				signo = SIGALRM;
 			} else {
 				setitimer(ITIMER_PROF, &t_r, NULL);
+				setitimer(ITIMER_REAL, &t_r2, NULL);
 				signo = SIGPROF;
 			}
 	}
