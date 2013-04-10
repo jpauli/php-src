@@ -236,6 +236,9 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 
 #if ZEND_DEBUG
 	fprintf(stderr, "Loaded PHP extension '%s', version %s\n", module_entry->name, module_entry->version);
+#ifdef PHP_WIN32
+	fflush(stderr);
+#endif
 #endif
 
 	return SUCCESS;
