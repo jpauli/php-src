@@ -25,6 +25,7 @@
 #include "php_globals.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
+#include "Zend/zend_extensions.h"
 
 #include "SAPI.h"
 
@@ -105,6 +106,7 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	char *libpath;
 	zend_module_entry *module_entry;
 	zend_module_entry *(*get_module)(void);
+	zend_extension *zend_extension_entry /* Used to detect PHP extension <-> Zend extension mismatch */
 	int error_type;
 	char *extension_dir;
 
@@ -173,13 +175,22 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	if (!get_module) {
 		if (DL_FETCH_SYMBOL(handle, "zend_extension_entry") || DL_FETCH_SYMBOL(handle, "_zend_extension_entry")) {
 			DL_UNLOAD(handle);
-			php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (appears to be a Zend Extension, try loading using zend_extension=%s from php.ini)", filename);
+			php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (appears to be a *Zend Extension*, try loading using zend_extension=%s from php.ini)", filename);
 			return FAILURE;
 		}
 		DL_UNLOAD(handle);
-		php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (maybe not a PHP library) '%s'", filename);
+		php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (maybe not a PHP or Zend extension?) '%s'", filename);
 		return FAILURE;
 	}
+
+	zend_extension_entry = (zend_extension *)DL_FETCH_SYMBOL(handle, "zend_extension_entry");
+	if (!zend_extension_entry) {
+		zend_extension_entry = (zend_extension *)DL_FETCH_SYMBOL(handle, "_zend_extension_entry");
+	}
+	if (zend_extension_entry) {
+		php_error_docref(NULL TSRMLS_CC, error_type, "Your are loading a PHP extension, but this extension seems to be a *Zend Extension*, you should try loading it using zend_extension=%s from php.ini or at least read its documentation at %s)", filename, zend_extension_entry->URL);
+	}
+
 	module_entry = get_module();
 	if (module_entry->zend_api != ZEND_MODULE_API_NO) {
 		php_error_docref(NULL TSRMLS_CC, error_type,
@@ -222,6 +233,11 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 			return FAILURE;
 		}
 	}
+
+#if ZEND_DEBUG
+	fprintf(stderr, "Loaded PHP extension '%s', version %s\n", module_entry->name, module_entry->version);
+#endif
+
 	return SUCCESS;
 }
 /* }}} */

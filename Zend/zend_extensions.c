@@ -20,6 +20,7 @@
 /* $Id$ */
 
 #include "zend_extensions.h"
+#include "tsrm_virtual_cwd.h" /* DEFAULT_SLASH */
 
 ZEND_API zend_llist zend_extensions;
 static int last_resource_number;
@@ -55,6 +56,9 @@ int zend_load_extension(const char *path)
 	}
 	if (!extension_version_info || !new_extension) {
 		fprintf(stderr, "%s doesn't appear to be a valid Zend extension\n", path);
+		if (DL_FETCH_SYMBOL(handle, "get_module") || DL_FETCH_SYMBOL(handle, "_get_module")) {
+			fprintf(stderr, "%s appear to be a PHP extension, try to load it using extension=%s\n", path, strrchr(path, DEFAULT_SLASH) + 1);
+		}
 /* See http://support.microsoft.com/kb/190351 */
 #ifdef PHP_WIN32
 		fflush(stderr);
@@ -131,7 +135,10 @@ int zend_register_extension(zend_extension *new_extension, DL_HANDLE handle)
 
 	zend_llist_add_element(&zend_extensions, &extension);
 
-	/*fprintf(stderr, "Loaded %s, version %s\n", extension.name, extension.version);*/
+#if ZEND_DEBUG
+	fprintf(stderr, "Loaded zend_extension '%s', version %s\n", extension.name, extension.version);
+#endif
+
 #endif
 
 	return SUCCESS;
