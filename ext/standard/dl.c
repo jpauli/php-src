@@ -197,7 +197,7 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 				"Module compiled with build ID=%s\n"
 				"PHP    compiled with build ID=%s\n"
 				"These options need to match\n",
-				module_entry->name, module_entry->build_id, ZEND_MODULE_BUILD_ID);
+				filename, module_entry->build_id, ZEND_MODULE_BUILD_ID);
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
