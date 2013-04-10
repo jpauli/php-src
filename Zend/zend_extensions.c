@@ -35,6 +35,7 @@ int zend_load_extension(const char *path)
 
 	handle = DL_LOAD(path);
 	if (!handle) {
+#ifndef ZEND_WIN32
 		zend_error(ERROR_TYPE, "Failed loading %s:  %s\n", path, DL_ERROR());
 #else
 		zend_error(ERROR_TYPE, "Failed loading %s\n", path);
