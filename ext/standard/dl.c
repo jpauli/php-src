@@ -106,7 +106,7 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	char *libpath;
 	zend_module_entry *module_entry;
 	zend_module_entry *(*get_module)(void);
-	zend_extension *zend_extension_entry /* Used to detect PHP extension <-> Zend extension mismatch */
+	zend_extension *zend_extension_entry; /* Used to detect PHP extension <-> Zend extension mismatch */
 	int error_type;
 	char *extension_dir;
 
