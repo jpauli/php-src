@@ -40,17 +40,6 @@ static int last_resource_number;
 /* {{{ tell if the current API is old or new */
 #define API_PROBLEM(version)   ((version->zend_extension_api_no < ZEND_EXTENSION_API_NO) ? "new" : "old") /* }}} */
 
-/* {{{ find sym in h, of type, setting local on success */
-#define DL_FIND_SYMBOL(h, type, sym, local) do { \
-    local = (type*) DL_FETCH_SYMBOL(h, "sym");\
-    if (!local) {\
-        local = (type*) DL_FETCH_SYMBOL(h, "_##sym");\
-    }\
-} while (0) /* }}} */
-
-/* {{{ check for the presence of sym in h */
-#define DL_HAS_SYMBOL(h, sym)  (DL_FETCH_SYMBOL("sym") || DL_FETCH_SYMBOL("_##sym")) /* }}} */
-
 /* {{{ load and register an extension using absolute paths only */
 int zend_load_extension(const char *path)
 {
@@ -71,18 +60,18 @@ int zend_load_extension(const char *path)
 	}
 
     /* find version symbol */
-	DL_FIND_SYMBOL(handle, zend_extension_version_info, extension_version_info, version);
+	DL_FIND_SYMBOL(handle, zend_extension_version_info*, "extension_version_info", version);
 	
 	if (!version) {
-		if (DL_HAS_SYMBOL(get_module)) {
-			zend_error(ERROR_TYPE, "%s appears to be a PHP extension, try to load it using extension=%s", path, strrchr(path, DEFAULT_SLASH) + 1);
+		if (DL_HAS_SYMBOL(handle, "get_module")) {
+			zend_error(ERROR_TYPE, "*PHP Extension* detected, try to load it using extension=%s", strrchr(path, DEFAULT_SLASH) + 1);
 		} else zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend or PHP extension", path);
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
 	
 	/* find extension symbol */
-	DL_FIND_SYMBOL(handle, zend_extension, zend_extension_entry, extension);
+	DL_FIND_SYMBOL(handle, zend_extension*, "zend_extension_entry", extension);
 
 	/* check for API compatibility */
 	if (!API_MATCH(version) && !API_CHECK(extension)) {
