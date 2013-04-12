@@ -25,80 +25,107 @@
 ZEND_API zend_llist zend_extensions;
 static int last_resource_number;
 
+/* {{{ match the executing build against build id in version info */
+#define BUILD_MATCH(version)   (strcmp(ZEND_EXTENSION_BUILD_ID, version->build_id) == SUCCESS) /* }}} */
+
+/* {{{ execute the build id check handler for ext, when necessary */
+#define BUILD_CHECK(ext)       (!ext->build_id_check || (ext->build_id_check(ZEND_EXTENSION_BUILD_ID) == SUCCESS)) /* }}} */
+
+/* {{{ match the executing API against API in version info */
+#define API_MATCH(version)     (version->zend_extension_api_no == ZEND_EXTENSION_API_NO) /* }}} */
+
+/* {{{ execute the API check handler for ext */
+#define API_CHECK(ext)         (!ext->api_no_check || ext->api_no_check(ZEND_EXTENSION_API_NO) == SUCCESS) /* }}} */
+
+/* {{{ tell if the current API is old or new */
+#define API_PROBLEM(version)   ((version->zend_extension_api_no < ZEND_EXTENSION_API_NO) ? "old" : "new") /* }}} */
+
+/* {{{ load and register an extension using absolute paths only */
 int zend_load_extension(const char *path)
 {
 #if ZEND_EXTENSIONS_SUPPORT
 	DL_HANDLE handle;
 #define ERROR_TYPE E_CORE_WARNING
-	zend_extension *new_extension;
-	zend_extension_version_info *extension_version_info;
+	zend_extension *extension;
+	zend_extension_version_info *version;
 
 	handle = DL_LOAD(path);
 	if (!handle) {
 #ifndef ZEND_WIN32
-		zend_error(ERROR_TYPE, "Failed loading %s:  %s\n", path, DL_ERROR());
+		zend_error(ERROR_TYPE, "Failed loading %s:  %s", path, DL_ERROR());
 #else
-		zend_error(ERROR_TYPE, "Failed loading %s\n", path);
+		zend_error(ERROR_TYPE, "Failed loading %s", path);
 #endif
 		return FAILURE;
 	}
 
-	extension_version_info = (zend_extension_version_info *) DL_FETCH_SYMBOL(handle, "extension_version_info");
-	if (!extension_version_info) {
-		extension_version_info = (zend_extension_version_info *) DL_FETCH_SYMBOL(handle, "_extension_version_info");
+	version = (zend_extension_version_info *) DL_FETCH_SYMBOL(handle, "extension_version_info");
+	if (!version) {
+		version = (zend_extension_version_info *) DL_FETCH_SYMBOL(handle, "_extension_version_info");
 	}
-	new_extension = (zend_extension *) DL_FETCH_SYMBOL(handle, "zend_extension_entry");
-	if (!new_extension) {
-		new_extension = (zend_extension *) DL_FETCH_SYMBOL(handle, "_zend_extension_entry");
+	
+	extension = (zend_extension *) DL_FETCH_SYMBOL(handle, "zend_extension_entry");
+	if (!extension) {
+		extension = (zend_extension *) DL_FETCH_SYMBOL(handle, "_zend_extension_entry");
 	}
-	if (!extension_version_info || !new_extension) {
-		zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend extension\n", path);
+	
+	if (!version || !extension) {
 		if (DL_FETCH_SYMBOL(handle, "get_module") || DL_FETCH_SYMBOL(handle, "_get_module")) {
-			zend_error(ERROR_TYPE, "%s appear to be a PHP extension, try to load it using extension=%s\n", path, strrchr(path, DEFAULT_SLASH) + 1);
-		}
+			zend_error(ERROR_TYPE, "%s appears to be a PHP extension, try to load it using extension=%s", path, strrchr(path, DEFAULT_SLASH) + 1);
+		} else zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend or PHP extension", path);
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
 
-	/* allow extension to proclaim compatibility with any Zend version */
-	if (extension_version_info->zend_extension_api_no != ZEND_EXTENSION_API_NO &&(!new_extension->api_no_check || new_extension->api_no_check(ZEND_EXTENSION_API_NO) != SUCCESS)) {
-		if (extension_version_info->zend_extension_api_no > ZEND_EXTENSION_API_NO) {
-			zend_error(ERROR_TYPE, "%s requires Zend Engine API version %d.\n"
-					"The Zend Engine API version %d which is installed, is outdated.\n\n",
-					new_extension->name,
-					extension_version_info->zend_extension_api_no,
-					ZEND_EXTENSION_API_NO);
-			DL_UNLOAD(handle);
-			return FAILURE;
-		} else if (extension_version_info->zend_extension_api_no < ZEND_EXTENSION_API_NO) {
-			zend_error(ERROR_TYPE, "%s requires Zend Engine API version %d.\n"
-					"The Zend Engine API version %d which is installed, is newer.\n"
-					"Contact %s at %s for a later version of %s.\n\n",
-					new_extension->name,
-					extension_version_info->zend_extension_api_no,
-					ZEND_EXTENSION_API_NO,
-					new_extension->author,
-					new_extension->URL,
-					new_extension->name);
-			DL_UNLOAD(handle);
-			return FAILURE;
-		}
-	} else if (strcmp(ZEND_EXTENSION_BUILD_ID, extension_version_info->build_id) &&
-	           (!new_extension->build_id_check || new_extension->build_id_check(ZEND_EXTENSION_BUILD_ID) != SUCCESS)) {
-		zend_error(ERROR_TYPE, "Cannot load %s - it was built with configuration %s, whereas running engine is %s\n",
-					new_extension->name, extension_version_info->build_id, ZEND_EXTENSION_BUILD_ID);
+	/* check for API compatibility */
+	if (!API_MATCH(version) && !API_CHECK(extension)) {
+	    if (extension->author && extension->URL) {
+	       zend_error(
+	            ERROR_TYPE, 
+	            "%s requires Zend Engine API version %d, the installed version %d is too %s. "
+	            "Try contacting %s <%s> for assistance.",
+				extension->name,
+				version->zend_extension_api_no,
+				ZEND_EXTENSION_API_NO,
+				API_PROBLEM(version),
+				extension->author,
+				extension->URL
+		    );
+	    } else {
+	       zend_error(
+	            ERROR_TYPE, 
+	            "%s requires Zend Engine API version %d, the installed version %d is too %s.",
+				extension->name,
+				version->zend_extension_api_no,
+				ZEND_EXTENSION_API_NO,
+				API_PROBLEM(version)
+		    );
+	    }
+	    
+	    DL_UNLOAD(handle);
+	    return FAILURE;
+	} 
+	
+	/* check for build compatibility */
+	if (!BUILD_MATCH(version) && !BUILD_CHECK(extension)) {
+	    zend_error(
+	        ERROR_TYPE, 
+	        "The Zend Extension %s asserts that it cannot be loaded in this environment. "
+	        "The extension was built using build %s, the current build is %s",
+		    extension->name, version->build_id, ZEND_EXTENSION_BUILD_ID
+		);
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
 
-	return zend_register_extension(new_extension, handle);
+	return zend_register_extension(extension, handle);
 #else
-	zend_error(ERROR_TYPE,"Extensions are not supported on this platform.\n");
+	zend_error(ERROR_TYPE,"Extensions are not supported on this platform.");
 	return FAILURE;
 #endif
-}
+} /* }}} */
 
-
+/* {{{ register a loaded extension */
 int zend_register_extension(zend_extension *new_extension, DL_HANDLE handle)
 {
 #if ZEND_EXTENSIONS_SUPPORT
@@ -121,8 +148,7 @@ int zend_register_extension(zend_extension *new_extension, DL_HANDLE handle)
 #endif
 
 	return SUCCESS;
-}
-
+} /* }}} */
 
 static void zend_extension_shutdown(zend_extension *extension TSRMLS_DC)
 {
