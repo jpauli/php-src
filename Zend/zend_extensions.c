@@ -133,14 +133,6 @@ int zend_register_extension(zend_extension *new_extension, DL_HANDLE handle)
 	zend_extension_dispatch_message(ZEND_EXTMSG_NEW_EXTENSION, &extension);
 
 	zend_llist_add_element(&zend_extensions, &extension);
-
-#if ZEND_DEBUG
-	fprintf(stderr, "Loaded zend_extension '%s', version %s\n", extension.name, extension.version);
-#ifdef PHP_WIN32
-	fflush(stderr);
-#endif
-#endif
-
 #endif
 	return SUCCESS;
 } /* }}} */
