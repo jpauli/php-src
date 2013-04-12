@@ -162,33 +162,28 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	}
 	efree(libpath);
 
-	get_module = (zend_module_entry *(*)(void)) DL_FETCH_SYMBOL(handle, "get_module");
-
-	/* Some OS prepend _ to symbol names while their dynamic linker
-	 * does not do that automatically. Thus we check manually for
-	 * _get_module. */
+    /* find get_module symbol */
+	DL_FIND_SYMBOL(handle, zend_module_entry *(*)(void), "get_module", get_module);
 
 	if (!get_module) {
-		get_module = (zend_module_entry *(*)(void)) DL_FETCH_SYMBOL(handle, "_get_module");
-	}
-
-	if (!get_module) {
-		if (DL_FETCH_SYMBOL(handle, "zend_extension_entry") || DL_FETCH_SYMBOL(handle, "_zend_extension_entry")) {
+		if (DL_HAS_SYMBOL(handle, "zend_extension_entry")) {
+			php_error_docref(NULL TSRMLS_CC, error_type, "*Zend Extension* detected, try to load it using zend_extension=%s", filename);
 			DL_UNLOAD(handle);
-			php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library. It appears to be a Zend Engine extension, try loading it using zend_extension=%s from php.ini)", filename);
 			return FAILURE;
 		}
+		
 		DL_UNLOAD(handle);
-		php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (maybe not a PHP or Zend Engine extension?) '%s'", filename);
+		php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (maybe not a PHP or Zend extension?) '%s'", filename);
 		return FAILURE;
 	}
 
-	zend_extension_entry = (zend_extension *)DL_FETCH_SYMBOL(handle, "zend_extension_entry");
-	if (!zend_extension_entry) {
-		zend_extension_entry = (zend_extension *)DL_FETCH_SYMBOL(handle, "_zend_extension_entry");
-	}
+    /* find zend_extension_entry symbol */
+    DL_FIND_SYMBOL(handle, zend_extension*, "zend_extension_entry", zend_extension_entry);
+	
 	if (zend_extension_entry) {
-		php_error_docref(NULL TSRMLS_CC, error_type, "Your are loading a PHP extension, but this extension seems to be a Zend Engine extension, you should try loading it using zend_extension=%s from php.ini or at least read its documentation at %s)", filename, zend_extension_entry->URL);
+		php_error_docref(NULL TSRMLS_CC, error_type, "*Zend Extension* detected, try to load it using zend_extension=%s", filename);
+		DL_UNLOAD(handle);
+		return FAILURE;
 	}
 
 	module_entry = get_module();
@@ -233,6 +228,7 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 			return FAILURE;
 		}
 	}
+
 	return SUCCESS;
 }
 /* }}} */

@@ -116,6 +116,26 @@
 # define ZEND_EXTENSIONS_SUPPORT	0
 #endif
 
+/* the following two macros will retry with underscore prefix if the requested sym cannot be found */
+#if ZEND_EXTENSIONS_SUPPORT
+/* looks for sym in h, casting and setting local on success */
+#define DL_FIND_SYMBOL(h, type, sym, local) do { \
+    local = (type) DL_FETCH_SYMBOL(h, sym);\
+    if (!local) {\
+        local = (type) DL_FETCH_SYMBOL(h, "_" sym);\
+    }\
+} while (0)
+/* checks for sym in h */
+# define DL_HAS_SYMBOL(h, sym)  (DL_FETCH_SYMBOL(h, sym) || DL_FETCH_SYMBOL(h, "_" sym))
+#else
+/* will set local null to be tolerant of bad logic */
+# define DL_FIND_SYMBOL(h, type, sym, local) do{\
+    local = NULL;\
+while(0)
+/* defined for tolerance */
+# define DL_HAS_SYMBOL(h, sym) 0
+#endif
+
 #if HAVE_ALLOCA_H && !defined(_ALLOCA_H)
 #  include <alloca.h>
 #endif
