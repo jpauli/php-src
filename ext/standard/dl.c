@@ -126,7 +126,7 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	if (strchr(filename, '/') != NULL || strchr(filename, DEFAULT_SLASH) != NULL) {
 		/* Passing modules with full path is not supported for dynamically loaded extensions */
 		if (type == MODULE_TEMPORARY) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Temporary module name should contain only filename");
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Temporary extension name should contain only filename");
 			return FAILURE;
 		}
 		libpath = estrdup(filename);
@@ -167,10 +167,11 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 
 	if (!get_module) {
 		if (DL_HAS_SYMBOL(handle, "zend_extension_entry")) {
-			DL_UNLOAD(handle);
 			php_error_docref(NULL TSRMLS_CC, error_type, "*Zend Extension* detected, try to load it using zend_extension=%s", filename);
+			DL_UNLOAD(handle);
 			return FAILURE;
 		}
+		
 		DL_UNLOAD(handle);
 		php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (maybe not a PHP or Zend extension?) '%s'", filename);
 		return FAILURE;
@@ -181,60 +182,28 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	
 	if (zend_extension_entry) {
 		php_error_docref(NULL TSRMLS_CC, error_type, "*Zend Extension* detected, try to load it using zend_extension=%s", filename);
+		DL_UNLOAD(handle);
+		return FAILURE;
 	}
 
 	module_entry = get_module();
 	if (module_entry->zend_api != ZEND_MODULE_API_NO) {
-		/* Check for pre-4.1.0 module which has a slightly different module_entry structure :( */
-			struct pre_4_1_0_module_entry {
-				char *name;
-				zend_function_entry *functions;
-				int (*module_startup_func)(INIT_FUNC_ARGS);
-				int (*module_shutdown_func)(SHUTDOWN_FUNC_ARGS);
-				int (*request_startup_func)(INIT_FUNC_ARGS);
-				int (*request_shutdown_func)(SHUTDOWN_FUNC_ARGS);
-				void (*info_func)(ZEND_MODULE_INFO_FUNC_ARGS);
-				int (*global_startup_func)(void);
-				int (*global_shutdown_func)(void);
-				int globals_id;
-				int module_started;
-				unsigned char type;
-				void *handle;
-				int module_number;
-				unsigned char zend_debug;
-				unsigned char zts;
-				unsigned int zend_api;
-			};
-
-			const char *name;
-			int zend_api;
-
-			if ((((struct pre_4_1_0_module_entry *)module_entry)->zend_api > 20000000) &&
-				(((struct pre_4_1_0_module_entry *)module_entry)->zend_api < 20010901)
-			) {
-				name		= ((struct pre_4_1_0_module_entry *)module_entry)->name;
-				zend_api	= ((struct pre_4_1_0_module_entry *)module_entry)->zend_api;
-			} else {
-				name		= module_entry->name;
-				zend_api	= module_entry->zend_api;
-			}
-
-			php_error_docref(NULL TSRMLS_CC, error_type,
-					"%s: Unable to initialize module\n"
-					"Module compiled with module API=%d\n"
-					"PHP    compiled with module API=%d\n"
-					"These options need to match\n",
-					name, zend_api, ZEND_MODULE_API_NO);
+		php_error_docref(NULL TSRMLS_CC, error_type,
+				"%s: Unable to initialize extension\n"
+				"Extension compiled with extension API=%d\n"
+				"PHP       compiled with extension API=%d\n"
+				"These options need to match\n",
+				filename, module_entry->zend_api, ZEND_MODULE_API_NO);
 			DL_UNLOAD(handle);
 			return FAILURE;
 	}
 	if(strcmp(module_entry->build_id, ZEND_MODULE_BUILD_ID)) {
 		php_error_docref(NULL TSRMLS_CC, error_type,
-				"%s: Unable to initialize module\n"
-				"Module compiled with build ID=%s\n"
-				"PHP    compiled with build ID=%s\n"
+				"%s: Unable to initialize extension\n"
+				"Extension compiled with build ID=%s\n"
+				"PHP       compiled with extension ID=%s\n"
 				"These options need to match\n",
-				module_entry->name, module_entry->build_id, ZEND_MODULE_BUILD_ID);
+				filename, module_entry->build_id, ZEND_MODULE_BUILD_ID);
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
@@ -254,7 +223,7 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 
 	if ((type == MODULE_TEMPORARY || start_now) && module_entry->request_startup_func) {
 		if (module_entry->request_startup_func(type, module_entry->module_number TSRMLS_CC) == FAILURE) {
-			php_error_docref(NULL TSRMLS_CC, error_type, "Unable to initialize module '%s'", module_entry->name);
+			php_error_docref(NULL TSRMLS_CC, error_type, "Unable to initialize extension '%s'", module_entry->name);
 			DL_UNLOAD(handle);
 			return FAILURE;
 		}

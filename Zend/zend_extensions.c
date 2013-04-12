@@ -69,37 +69,37 @@ int zend_load_extension(const char *path)
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
-	
+
 	/* find extension symbol */
 	DL_FIND_SYMBOL(handle, zend_extension*, "zend_extension_entry", extension);
 
 	/* check for API compatibility */
 	if (!API_MATCH(version) && !API_CHECK(extension)) {
 	    if (extension->author && extension->URL) {
-            zend_error(
-                ERROR_TYPE, 
-                "%s requires Zend Engine API version %d, the installed version %d is too %s. "
-                "Try contacting %s <%s> for assistance.",
-                extension->name,
-                version->zend_extension_api_no,
-                ZEND_EXTENSION_API_NO,
-                API_PROBLEM(version),
-                extension->author,
-                extension->URL
-            );
+	       zend_error(
+	            ERROR_TYPE, 
+	            "%s requires Zend Engine API version %d, the installed version %d is too %s. "
+	            "Try contacting %s <%s> for assistance.",
+				extension->name,
+				version->zend_extension_api_no,
+				ZEND_EXTENSION_API_NO,
+				API_PROBLEM(version),
+				extension->author,
+				extension->URL
+		    );
 	    } else {
-            zend_error(
-                ERROR_TYPE,
-                "%s requires Zend Engine API version %d, the installed version %d is too %s.",
-                extension->name,
-                version->zend_extension_api_no,
-                ZEND_EXTENSION_API_NO,
-                API_PROBLEM(version)
-            );
+	       zend_error(
+	            ERROR_TYPE, 
+	            "%s requires Zend Engine API version %d, the installed version %d is too %s.",
+				extension->name,
+				version->zend_extension_api_no,
+				ZEND_EXTENSION_API_NO,
+				API_PROBLEM(version)
+		    );
 	    }
 	    
-        DL_UNLOAD(handle);
-        return FAILURE;
+	    DL_UNLOAD(handle);
+	    return FAILURE;
 	} 
 	
 	/* check for build compatibility */
@@ -142,7 +142,6 @@ int zend_register_extension(zend_extension *new_extension, DL_HANDLE handle)
 #endif
 
 #endif
-
 	return SUCCESS;
 } /* }}} */
 
