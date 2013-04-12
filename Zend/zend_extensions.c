@@ -38,7 +38,7 @@ static int last_resource_number;
 #define API_CHECK(ext)         (!ext->api_no_check || ext->api_no_check(ZEND_EXTENSION_API_NO) == SUCCESS) /* }}} */
 
 /* {{{ tell if the current API is old or new */
-#define API_PROBLEM(version)   ((version->zend_extension_api_no < ZEND_EXTENSION_API_NO) ? "old" : "new") /* }}} */
+#define API_PROBLEM(version)   ((version->zend_extension_api_no < ZEND_EXTENSION_API_NO) ? "new" : "old") /* }}} */
 
 /* {{{ load and register an extension using absolute paths only */
 int zend_load_extension(const char *path)
