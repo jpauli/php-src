@@ -40,6 +40,17 @@ static int last_resource_number;
 /* {{{ tell if the current API is old or new */
 #define API_PROBLEM(version)   ((version->zend_extension_api_no < ZEND_EXTENSION_API_NO) ? "new" : "old") /* }}} */
 
+/* {{{ find sym in h, of type, setting local on success */
+#define DL_FIND_SYMBOL(h, type, sym, local) do { \
+    local = (type*) DL_FETCH_SYMBOL(h, "sym");\
+    if (!local) {\
+        local = (type*) DL_FETCH_SYMBOL(h, "_##sym");\
+    }\
+} while (0) /* }}} */
+
+/* {{{ check for the presence of sym in h */
+#define DL_HAS_SYMBOL(h, sym)  (DL_FETCH_SYMBOL("sym") || DL_FETCH_SYMBOL("_##sym")) /* }}} */
+
 /* {{{ load and register an extension using absolute paths only */
 int zend_load_extension(const char *path)
 {
@@ -59,63 +70,59 @@ int zend_load_extension(const char *path)
 		return FAILURE;
 	}
 
-	version = (zend_extension_version_info *) DL_FETCH_SYMBOL(handle, "extension_version_info");
+    /* find version symbol */
+	DL_FIND_SYMBOL(handle, zend_extension_version_info, extension_version_info, version);
+	
 	if (!version) {
-		version = (zend_extension_version_info *) DL_FETCH_SYMBOL(handle, "_extension_version_info");
-	}
-	
-	extension = (zend_extension *) DL_FETCH_SYMBOL(handle, "zend_extension_entry");
-	if (!extension) {
-		extension = (zend_extension *) DL_FETCH_SYMBOL(handle, "_zend_extension_entry");
-	}
-	
-	if (!version || !extension) {
-		if (DL_FETCH_SYMBOL(handle, "get_module") || DL_FETCH_SYMBOL(handle, "_get_module")) {
+		if (DL_HAS_SYMBOL(get_module)) {
 			zend_error(ERROR_TYPE, "%s appears to be a PHP extension, try to load it using extension=%s", path, strrchr(path, DEFAULT_SLASH) + 1);
 		} else zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend or PHP extension", path);
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
+	
+	/* find extension symbol */
+	DL_FIND_SYMBOL(handle, zend_extension, zend_extension_entry, extension);
 
 	/* check for API compatibility */
 	if (!API_MATCH(version) && !API_CHECK(extension)) {
 	    if (extension->author && extension->URL) {
-	       zend_error(
-	            ERROR_TYPE, 
-	            "%s requires Zend Engine API version %d, the installed version %d is too %s. "
-	            "Try contacting %s <%s> for assistance.",
-				extension->name,
-				version->zend_extension_api_no,
-				ZEND_EXTENSION_API_NO,
-				API_PROBLEM(version),
-				extension->author,
-				extension->URL
-		    );
+            zend_error(
+                ERROR_TYPE, 
+                "%s requires Zend Engine API version %d, the installed version %d is too %s. "
+                "Try contacting %s <%s> for assistance.",
+                extension->name,
+                version->zend_extension_api_no,
+                ZEND_EXTENSION_API_NO,
+                API_PROBLEM(version),
+                extension->author,
+                extension->URL
+            );
 	    } else {
-	       zend_error(
-	            ERROR_TYPE, 
-	            "%s requires Zend Engine API version %d, the installed version %d is too %s.",
-				extension->name,
-				version->zend_extension_api_no,
-				ZEND_EXTENSION_API_NO,
-				API_PROBLEM(version)
-		    );
+            zend_error(
+                ERROR_TYPE,
+                "%s requires Zend Engine API version %d, the installed version %d is too %s.",
+                extension->name,
+                version->zend_extension_api_no,
+                ZEND_EXTENSION_API_NO,
+                API_PROBLEM(version)
+            );
 	    }
 	    
-	    DL_UNLOAD(handle);
-	    return FAILURE;
+        DL_UNLOAD(handle);
+        return FAILURE;
 	} 
 	
 	/* check for build compatibility */
 	if (!BUILD_MATCH(version) && !BUILD_CHECK(extension)) {
-	    zend_error(
-	        ERROR_TYPE, 
-	        "The Zend Extension %s asserts that it cannot be loaded in this environment. "
-	        "The extension was built using build %s, the current build is %s",
-		    extension->name, version->build_id, ZEND_EXTENSION_BUILD_ID
-		);
-		DL_UNLOAD(handle);
-		return FAILURE;
+        zend_error(
+            ERROR_TYPE, 
+            "The Zend Extension %s asserts that it cannot be loaded in this environment. "
+            "The extension was built using build %s, the current build is %s",
+            extension->name, version->build_id, ZEND_EXTENSION_BUILD_ID
+        );
+        DL_UNLOAD(handle);
+        return FAILURE;
 	}
 
 	return zend_register_extension(extension, handle);
