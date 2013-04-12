@@ -52,7 +52,7 @@ int zend_load_extension(const char *path)
 		new_extension = (zend_extension *) DL_FETCH_SYMBOL(handle, "_zend_extension_entry");
 	}
 	if (!extension_version_info || !new_extension) {
-		zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend extension\n", path);
+		zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend Engine extension\n", path);
 		if (DL_FETCH_SYMBOL(handle, "get_module") || DL_FETCH_SYMBOL(handle, "_get_module")) {
 			zend_error(ERROR_TYPE, "%s appear to be a PHP extension, try to load it using extension=%s\n", path, strrchr(path, DEFAULT_SLASH) + 1);
 		}
@@ -111,15 +111,7 @@ int zend_register_extension(zend_extension *new_extension, DL_HANDLE handle)
 
 	zend_llist_add_element(&zend_extensions, &extension);
 
-#if ZEND_DEBUG
-	fprintf(stderr, "Loaded zend_extension '%s', version %s\n", extension.name, extension.version);
-#ifdef PHP_WIN32
-	fflush(stderr);
 #endif
-#endif
-
-#endif
-
 	return SUCCESS;
 }
 

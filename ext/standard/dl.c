@@ -126,7 +126,7 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	if (strchr(filename, '/') != NULL || strchr(filename, DEFAULT_SLASH) != NULL) {
 		/* Passing modules with full path is not supported for dynamically loaded extensions */
 		if (type == MODULE_TEMPORARY) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Temporary module name should contain only filename");
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Temporary extension name should contain only filename");
 			return FAILURE;
 		}
 		libpath = estrdup(filename);
@@ -175,11 +175,11 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 	if (!get_module) {
 		if (DL_FETCH_SYMBOL(handle, "zend_extension_entry") || DL_FETCH_SYMBOL(handle, "_zend_extension_entry")) {
 			DL_UNLOAD(handle);
-			php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (appears to be a *Zend Extension*, try loading using zend_extension=%s from php.ini)", filename);
+			php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library. It appears to be a Zend Engine extension, try loading it using zend_extension=%s from php.ini)", filename);
 			return FAILURE;
 		}
 		DL_UNLOAD(handle);
-		php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (maybe not a PHP or Zend extension?) '%s'", filename);
+		php_error_docref(NULL TSRMLS_CC, error_type, "Invalid library (maybe not a PHP or Zend Engine extension?) '%s'", filename);
 		return FAILURE;
 	}
 
@@ -188,25 +188,25 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 		zend_extension_entry = (zend_extension *)DL_FETCH_SYMBOL(handle, "_zend_extension_entry");
 	}
 	if (zend_extension_entry) {
-		php_error_docref(NULL TSRMLS_CC, error_type, "Your are loading a PHP extension, but this extension seems to be a *Zend Extension*, you should try loading it using zend_extension=%s from php.ini or at least read its documentation at %s)", filename, zend_extension_entry->URL);
+		php_error_docref(NULL TSRMLS_CC, error_type, "Your are loading a PHP extension, but this extension seems to be a Zend Engine extension, you should try loading it using zend_extension=%s from php.ini or at least read its documentation at %s)", filename, zend_extension_entry->URL);
 	}
 
 	module_entry = get_module();
 	if (module_entry->zend_api != ZEND_MODULE_API_NO) {
 		php_error_docref(NULL TSRMLS_CC, error_type,
-		"%s: Unable to initialize module\n"
-		"Module compiled with module API=%d\n"
-		"PHP    compiled with module API=%d\n"
-		"These options need to match\n",
-		filename, module_entry->zend_api, ZEND_MODULE_API_NO);
-		DL_UNLOAD(handle);
-		return FAILURE;
+				"%s: Unable to initialize extension\n"
+				"Extension compiled with extension API=%d\n"
+				"PHP       compiled with extension API=%d\n"
+				"These options need to match\n",
+				filename, module_entry->zend_api, ZEND_MODULE_API_NO);
+			DL_UNLOAD(handle);
+			return FAILURE;
 	}
 	if(strcmp(module_entry->build_id, ZEND_MODULE_BUILD_ID)) {
 		php_error_docref(NULL TSRMLS_CC, error_type,
-				"%s: Unable to initialize module\n"
-				"Module compiled with build ID=%s\n"
-				"PHP    compiled with build ID=%s\n"
+				"%s: Unable to initialize extension\n"
+				"Extension compiled with build ID=%s\n"
+				"PHP       compiled with extension ID=%s\n"
 				"These options need to match\n",
 				filename, module_entry->build_id, ZEND_MODULE_BUILD_ID);
 		DL_UNLOAD(handle);
@@ -228,19 +228,11 @@ PHPAPI int php_load_extension(char *filename, int type, int start_now TSRMLS_DC)
 
 	if ((type == MODULE_TEMPORARY || start_now) && module_entry->request_startup_func) {
 		if (module_entry->request_startup_func(type, module_entry->module_number TSRMLS_CC) == FAILURE) {
-			php_error_docref(NULL TSRMLS_CC, error_type, "Unable to initialize module '%s'", module_entry->name);
+			php_error_docref(NULL TSRMLS_CC, error_type, "Unable to initialize extension '%s'", module_entry->name);
 			DL_UNLOAD(handle);
 			return FAILURE;
 		}
 	}
-
-#if ZEND_DEBUG
-	fprintf(stderr, "Loaded PHP extension '%s', version %s\n", module_entry->name, module_entry->version);
-#ifdef PHP_WIN32
-	fflush(stderr);
-#endif
-#endif
-
 	return SUCCESS;
 }
 /* }}} */
