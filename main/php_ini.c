@@ -55,20 +55,27 @@
 #define TRANSLATE_SLASHES_LOWER(path)
 #endif
 
+/* php.ini extension and module support */
+#define PHP_SO_TOKEN    "extension"
+#define PHP_SO_TYPE     1
+#define ZEND_SO_TOKEN   "zend_extension"
+#define ZEND_SO_TYPE    2
+#define IS_SO(s, t)            (!is_special_section && (strcasecmp(s, t)==SUCCESS))   
 
-typedef struct _php_extension_lists {
-	zend_llist engine;
-	zend_llist functions;
-} php_extension_lists;
+typedef struct _php_so_entry {
+    char*       name;
+    uint        type;
+} php_so_entry;
 
-/* True globals */
+static zend_llist so_list;
 static int is_special_section = 0;
 static HashTable *active_ini_hash;
 static HashTable configuration_hash;
 static int has_per_dir_config = 0;
 static int has_per_host_config = 0;
+
+/* True globals */
 PHPAPI char *php_ini_opened_path=NULL;
-static php_extension_lists extension_lists;
 PHPAPI char *php_ini_scanned_path=NULL;
 PHPAPI char *php_ini_scanned_files=NULL;
 
@@ -183,10 +190,6 @@ PHPAPI void display_ini_entries(zend_module_entry *module)
 }
 /* }}} */
 
-/* php.ini support */
-#define PHP_EXTENSION_TOKEN		"extension"
-#define ZEND_EXTENSION_TOKEN	"zend_extension"
-
 /* {{{ config_zval_dtor
  */
 PHPAPI void config_zval_dtor(zval *zvalue)
@@ -211,7 +214,7 @@ static void php_ini_parser_cb(zval *arg1, zval *arg2, zval *arg3, int callback_t
 {
 	zval *entry;
 	HashTable *active_hash;
-	char *extension_name;
+	php_so_entry so_entry = {NULL, 0};
 
 	if (active_ini_hash) {
 		active_hash = active_ini_hash;
@@ -226,19 +229,21 @@ static void php_ini_parser_cb(zval *arg1, zval *arg2, zval *arg3, int callback_t
 					break;
 				}
 
-				/* PHP and Zend extensions are not added into configuration hash! */
-				if (!is_special_section && !strcasecmp(Z_STRVAL_P(arg1), PHP_EXTENSION_TOKEN)) { /* load PHP extension */
-					extension_name = estrndup(Z_STRVAL_P(arg2), Z_STRLEN_P(arg2));
-					zend_llist_add_element(&extension_lists.functions, &extension_name);
-				} else if (!is_special_section && !strcasecmp(Z_STRVAL_P(arg1), ZEND_EXTENSION_TOKEN)) { /* load Zend extension */
-					extension_name = estrndup(Z_STRVAL_P(arg2), Z_STRLEN_P(arg2));
-					zend_llist_add_element(&extension_lists.engine, &extension_name);
+				/* Shared objects are not added to configuration hash */
+				if (IS_SO(Z_STRVAL_P(arg1), PHP_SO_TOKEN)) { /* Zend Module */
+					so_entry.name = estrndup(Z_STRVAL_P(arg2), Z_STRLEN_P(arg2));
+					so_entry.type = PHP_SO_TYPE;
+				} else if (IS_SO(Z_STRVAL_P(arg1), ZEND_SO_TOKEN)) { /* Zend Extension */
+					so_entry.name = estrndup(Z_STRVAL_P(arg2), Z_STRLEN_P(arg2));
+					so_entry.type = ZEND_SO_TYPE;
+				}
 
-				/* All other entries are added into either configuration_hash or active ini section array */
-				} else {
+				if (!so_entry.type) {
 					/* Store in active hash */
 					zend_hash_update(active_hash, Z_STRVAL_P(arg1), Z_STRLEN_P(arg1) + 1, arg2, sizeof(zval), (void **) &entry);
 					Z_STRVAL_P(entry) = zend_strndup(Z_STRVAL_P(entry), Z_STRLEN_P(entry));
+				} else {
+					zend_llist_add_element(&so_list, &so_entry);
 				}
 			}
 			break;
@@ -343,9 +348,9 @@ static void php_ini_parser_cb(zval *arg1, zval *arg2, zval *arg3, int callback_t
 }
 /* }}} */
 
-/* {{{ php_load_php_extension_cb
+/* {{{ php_load_php_module_cb
  */
-static void php_load_php_extension_cb(void *arg TSRMLS_DC)
+static void php_load_php_module_cb(void *arg TSRMLS_DC)
 {
 #ifdef HAVE_LIBDL
 	php_load_extension(*((char **) arg), MODULE_PERSISTENT, 0 TSRMLS_CC);
@@ -358,13 +363,11 @@ static void php_load_php_extension_cb(void *arg TSRMLS_DC)
 static void php_load_zend_extension_cb(void *arg TSRMLS_DC)
 {
 	char *filename = *((char **) arg);
-	int length = strlen(filename);
-
-	if (IS_ABSOLUTE_PATH(filename, length)) {
+	
+	if (IS_ABSOLUTE_PATH(filename, strlen(filename))) {
 		zend_load_extension(filename);
 	} else {
-	    char *libpath;
-		char *extension_dir = INI_STR("extension_dir");
+		char *libpath, *extension_dir = INI_STR("extension_dir");
 		int extension_dir_len = strlen(extension_dir);
 
 		if (IS_SLASH(extension_dir[extension_dir_len-1])) {
@@ -377,6 +380,31 @@ static void php_load_zend_extension_cb(void *arg TSRMLS_DC)
 	}
 }
 /* }}} */
+
+/* {{{ php_load_so_entry_zend_cb */
+static void php_load_so_entry_zend_cb(void *arg TSRMLS_DC) {
+	php_so_entry* entry  = (php_so_entry*) arg;
+
+	switch (entry->type) {
+		case ZEND_SO_TYPE:
+			return php_load_zend_extension_cb(&entry->name TSRMLS_CC);
+	}
+} /* }}} */
+
+/* {{{ php_load_so_entry_php_cb */
+static void php_load_so_entry_php_cb(void *arg TSRMLS_DC) {
+	php_so_entry* entry = (php_so_entry*) arg;
+
+	switch (entry->type) {
+		case PHP_SO_TYPE:
+			return php_load_php_module_cb(&entry->name TSRMLS_CC);
+	}
+} /* }}} */
+
+/* {{{ free so entry name */
+static void php_free_so_entry(void* arg TSRMLS_DC) {
+    free_estring(&((php_so_entry*)arg)->name);
+} /* }}} */
 
 /* {{{ php_init_config
  */
@@ -397,8 +425,7 @@ int php_init_config(TSRMLS_D)
 		sapi_module.ini_defaults(&configuration_hash);
 	}
 
-	zend_llist_init(&extension_lists.engine, sizeof(char *), (llist_dtor_func_t) free_estring, 1);
-	zend_llist_init(&extension_lists.functions, sizeof(char *), (llist_dtor_func_t) free_estring, 1);
+	zend_llist_init(&so_list, sizeof(php_so_entry), (llist_dtor_func_t) php_free_so_entry, 1);
 
 	open_basedir = PG(open_basedir);
 
@@ -723,11 +750,13 @@ int php_shutdown_config(void)
  */
 void php_ini_register_extensions(TSRMLS_D)
 {
-	zend_llist_apply(&extension_lists.engine, php_load_zend_extension_cb TSRMLS_CC);
-	zend_llist_apply(&extension_lists.functions, php_load_php_extension_cb TSRMLS_CC);
+	zend_llist_apply(
+		&so_list, php_load_so_entry_zend_cb TSRMLS_CC);
 
-	zend_llist_destroy(&extension_lists.engine);
-	zend_llist_destroy(&extension_lists.functions);
+	zend_llist_apply(
+		&so_list, php_load_so_entry_php_cb TSRMLS_CC);
+
+	zend_llist_destroy(&so_list TSRMLS_CC);
 }
 /* }}} */
 
