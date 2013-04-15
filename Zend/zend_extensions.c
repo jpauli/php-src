@@ -59,13 +59,13 @@ int zend_load_extension(const char *path)
 		return FAILURE;
 	}
 
-    /* find version symbol */
+	/* find version symbol */
 	DL_FIND_SYMBOL(handle, zend_extension_version_info*, "extension_version_info", version);
 	
 	if (!version) {
 		if (DL_HAS_SYMBOL(handle, "get_module")) {
-			zend_error(ERROR_TYPE, "*PHP Extension* detected, try to load it using extension=%s", strrchr(path, DEFAULT_SLASH) + 1);
-		} else zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend or PHP extension", path);
+			zend_error(ERROR_TYPE, "PHP extension detected, try to load it using extension=%s", strrchr(path, DEFAULT_SLASH) + 1);
+		} else zend_error(ERROR_TYPE, "%s doesn't appear to be a valid Zend Engine or PHP extension", path);
 		DL_UNLOAD(handle);
 		return FAILURE;
 	}
@@ -75,43 +75,43 @@ int zend_load_extension(const char *path)
 
 	/* check for API compatibility */
 	if (!API_MATCH(version) && !API_CHECK(extension)) {
-	    if (extension->author && extension->URL) {
-	       zend_error(
-	            ERROR_TYPE, 
-	            "%s requires Zend Engine API version %d, the installed version %d is too %s. "
-	            "Try contacting %s <%s> for assistance.",
+		if (extension->author && extension->URL) {
+			zend_error(
+				ERROR_TYPE,
+				"%s requires Zend Engine API version %d, the installed version %d is too %s. "
+				"Try contacting %s <%s> for assistance.",
 				extension->name,
 				version->zend_extension_api_no,
 				ZEND_EXTENSION_API_NO,
 				API_PROBLEM(version),
 				extension->author,
 				extension->URL
-		    );
-	    } else {
-	       zend_error(
-	            ERROR_TYPE, 
-	            "%s requires Zend Engine API version %d, the installed version %d is too %s.",
+			);
+		} else {
+			zend_error(
+				ERROR_TYPE,
+				"%s requires Zend Engine API version %d, the installed version %d is too %s.",
 				extension->name,
 				version->zend_extension_api_no,
 				ZEND_EXTENSION_API_NO,
 				API_PROBLEM(version)
-		    );
-	    }
-	    
-	    DL_UNLOAD(handle);
-	    return FAILURE;
-	} 
+			);
+		}
+
+		DL_UNLOAD(handle);
+		return FAILURE;
+	}
 	
 	/* check for build compatibility */
 	if (!BUILD_MATCH(version) && !BUILD_CHECK(extension)) {
-        zend_error(
-            ERROR_TYPE, 
-            "The Zend Extension %s asserts that it cannot be loaded in this environment. "
-            "The extension was built using build %s, the current build is %s",
-            extension->name, version->build_id, ZEND_EXTENSION_BUILD_ID
-        );
-        DL_UNLOAD(handle);
-        return FAILURE;
+		zend_error(
+			ERROR_TYPE,
+			"The Zend Engine extension %s asserts that it cannot be loaded in this environment. "
+			"The extension was built using build %s, the current build is %s",
+			extension->name, version->build_id, ZEND_EXTENSION_BUILD_ID
+		);
+		DL_UNLOAD(handle);
+		return FAILURE;
 	}
 
 	return zend_register_extension(extension, handle);
