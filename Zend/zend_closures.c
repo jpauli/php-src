@@ -39,6 +39,7 @@ typedef struct _zend_closure {
 	zend_function  func;
 	zval          *this_ptr;
 	HashTable     *debug_info;
+	zend_bool      is_bindable;
 } zend_closure;
 
 /* non-static since it needs to be referenced */
@@ -394,6 +395,11 @@ ZEND_METHOD(Closure, __construct)
 }
 /* }}} */
 
+ZEND_METHOD(Closure, isBindable)
+{
+	RETURN_BOOL( ((zend_closure *)zend_object_store_get_object(getThis()))->is_bindable);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_closure_bindto, 0, 0, 1)
 	ZEND_ARG_INFO(0, newthis)
 	ZEND_ARG_INFO(0, newscope)
@@ -407,6 +413,7 @@ ZEND_END_ARG_INFO()
 
 static const zend_function_entry closure_functions[] = {
 	ZEND_ME(Closure, __construct, NULL, ZEND_ACC_PRIVATE)
+	ZEND_ME(Closure, isBindable, NULL, ZEND_ACC_PUBLIC)
 	ZEND_ME(Closure, bind, arginfo_closure_bind, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_MALIAS(Closure, bindTo, bind, arginfo_closure_bindto, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
@@ -495,9 +502,11 @@ ZEND_API void zend_create_closure(zval *res, zend_function *func, zend_class_ent
 		if (this_ptr && (closure->func.common.fn_flags & ZEND_ACC_STATIC) == 0) {
 			closure->this_ptr = this_ptr;
 			Z_ADDREF_P(this_ptr);
+			closure->is_bindable = (zend_bool)1;
 		} else {
 			closure->func.common.fn_flags |= ZEND_ACC_STATIC;
 			closure->this_ptr = NULL;
+			closure->is_bindable = (zend_bool)0;
 		}
 	} else {
 		closure->this_ptr = NULL;
