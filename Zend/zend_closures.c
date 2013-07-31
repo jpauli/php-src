@@ -509,6 +509,7 @@ ZEND_API void zend_create_closure(zval *res, zend_function *func, zend_class_ent
 			closure->is_bindable = (zend_bool)0;
 		}
 	} else {
+		closure->is_bindable = (zend_bool)1; /* global scope defined closures are bindable */
 		closure->this_ptr = NULL;
 	}
 }
