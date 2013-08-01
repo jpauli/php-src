@@ -1147,8 +1147,8 @@ ZEND_FUNCTION(method_exists)
 			) {
 				/* Returns true to the fake Closure's __invoke */
 				RETVAL_BOOL((func->common.scope == zend_ce_closure
-					&& (method_len == sizeof(ZEND_INVOKE_FUNC_NAME)-1)
-					&& memcmp(lcname, ZEND_INVOKE_FUNC_NAME, sizeof(ZEND_INVOKE_FUNC_NAME)-1) == 0) ? 1 : 0);
+					&& (method_len == sizeof(ZEND_INVOKE_FUNC_STR_NAME)-1)
+					&& memcmp(lcname, ZEND_INVOKE_FUNC_STR_NAME, sizeof(ZEND_INVOKE_FUNC_STR_NAME)-1) == 0) ? 1 : 0);
 					
 				efree(lcname);
 				efree((char*)((zend_internal_function*)func)->function_name);

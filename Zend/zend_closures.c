@@ -161,7 +161,7 @@ ZEND_API zend_function *zend_get_closure_invoke_method(zval *obj TSRMLS_DC) /* {
 	invoke->internal_function.handler = ZEND_MN(Closure___invoke);
 	invoke->internal_function.module = 0;
 	invoke->internal_function.scope = zend_ce_closure;
-	invoke->internal_function.function_name = estrndup(ZEND_INVOKE_FUNC_NAME, sizeof(ZEND_INVOKE_FUNC_NAME)-1);
+	invoke->internal_function.function_name = estrndup(ZEND_INVOKE_FUNC_STR_NAME, sizeof(ZEND_INVOKE_FUNC_STR_NAME)-1);
 	return invoke;
 }
 /* }}} */
@@ -187,8 +187,8 @@ static zend_function *zend_closure_get_method(zval **object_ptr, char *method_na
 
 	lc_name = do_alloca(method_len + 1, use_heap);
 	zend_str_tolower_copy(lc_name, method_name, method_len);
-	if ((method_len == sizeof(ZEND_INVOKE_FUNC_NAME)-1) &&
-		memcmp(lc_name, ZEND_INVOKE_FUNC_NAME, sizeof(ZEND_INVOKE_FUNC_NAME)-1) == 0
+	if ((method_len == sizeof(ZEND_INVOKE_FUNC_STR_NAME)-1) &&
+		memcmp(lc_name, ZEND_INVOKE_FUNC_STR_NAME, sizeof(ZEND_INVOKE_FUNC_STR_NAME)-1) == 0
 	) {
 		free_alloca(lc_name, use_heap);
 		return zend_get_closure_invoke_method(*object_ptr TSRMLS_CC);

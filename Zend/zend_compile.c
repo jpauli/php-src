@@ -97,6 +97,31 @@
 		} \
 	} while (0)
 
+
+#define METHOD_VISIBILITY_ERROR(METHOD, VERB) zend_error(E_WARNING, "The magic method %s must have public visibility and %s be static", ZEND_STRINGIFY_MACRO(METHOD), VERB);
+
+#define DEFAULT_VISIBILITY_CHECK fn_flags & ((ZEND_ACC_PPP_MASK | ZEND_ACC_STATIC) ^ ZEND_ACC_PUBLIC)
+
+#define VISIBILITY_ERROR_CAN_NOT "can not"
+#define VISIBILITY_ERROR_MUST "must"
+
+#define CHECK_VISIBILITY(METHOD, VISIBILITY_CHECK, VERB) if ((name_len == sizeof(ZEND_STRINGIFY_MACRO(METHOD))-1) && (!memcmp(lcname, (ZEND_STRINGIFY_MACRO(METHOD)), sizeof(ZEND_STRINGIFY_MACRO(METHOD))-1))) { \
+		if (VISIBILITY_CHECK) { \
+		    METHOD_VISIBILITY_ERROR(METHOD, VERB) \
+		} \
+	}
+
+#define CHECK_METHOD_VISIBILITY(METHOD, VISIBILITY_CHECK, VERB) if ((name_len == sizeof(ZEND_STRINGIFY_MACRO(METHOD))-1) && (!memcmp(lcname, ZEND_STRINGIFY_MACRO(METHOD), sizeof(ZEND_STRINGIFY_MACRO(METHOD))-1))) { \
+			if (VISIBILITY_CHECK) { \
+				METHOD_VISIBILITY_ERROR(METHOD, VERB) \
+			} \
+			CG(active_class_entry)->METHOD = (zend_function *) CG(active_op_array); \
+		}
+
+#define ADD_MAGIC_METHOD(METHOD)  if (!strncmp(mname, ZEND_STRINGIFY_MACRO(METHOD), mname_len)) { \
+		ce->METHOD = fe; \
+	}
+
 ZEND_API zend_op_array *(*zend_compile_file)(zend_file_handle *file_handle, int type TSRMLS_DC);
 ZEND_API zend_op_array *(*zend_compile_string)(zval *source_string, char *filename TSRMLS_DC);
 
@@ -1819,8 +1844,8 @@ void zend_do_end_function_declaration(const znode *function_token TSRMLS_DC) /* 
 		name_len = strlen(CG(active_op_array)->function_name);
 		zend_str_tolower_copy(lcname, CG(active_op_array)->function_name, MIN(name_len, sizeof(lcname)-1));
 		lcname[sizeof(lcname)-1] = '\0'; /* zend_str_tolower_copy won't necessarily set the zero byte */
-		if (name_len == sizeof(ZEND_AUTOLOAD_FUNC_NAME) - 1 && !memcmp(lcname, ZEND_AUTOLOAD_FUNC_NAME, sizeof(ZEND_AUTOLOAD_FUNC_NAME)) && CG(active_op_array)->num_args != 1) {
-			zend_error(E_COMPILE_ERROR, "%s() must take exactly 1 argument", ZEND_AUTOLOAD_FUNC_NAME);
+		if (name_len == sizeof(ZEND_AUTOLOAD_FUNC_STR_NAME) - 1 && !memcmp(lcname, ZEND_AUTOLOAD_FUNC_STR_NAME, sizeof(ZEND_AUTOLOAD_FUNC_STR_NAME)) && CG(active_op_array)->num_args != 1) {
+			zend_error(E_COMPILE_ERROR, "%s() must take exactly 1 argument", ZEND_AUTOLOAD_FUNC_STR_NAME);
 		}
 	}
 
@@ -1981,9 +2006,9 @@ void zend_do_begin_method_call(znode *left_bracket TSRMLS_DC) /* {{{ */
 	last_op_number = get_next_op_number(CG(active_op_array))-1;
 	last_op = &CG(active_op_array)->opcodes[last_op_number];
 
-	if ((last_op->op2_type == IS_CONST) && (Z_TYPE(CONSTANT(last_op->op2.constant)) == IS_STRING) && (Z_STRLEN(CONSTANT(last_op->op2.constant)) == sizeof(ZEND_CLONE_FUNC_NAME)-1)
-		&& !zend_binary_strcasecmp(Z_STRVAL(CONSTANT(last_op->op2.constant)), Z_STRLEN(CONSTANT(last_op->op2.constant)), ZEND_CLONE_FUNC_NAME, sizeof(ZEND_CLONE_FUNC_NAME)-1)) {
-		zend_error(E_COMPILE_ERROR, "Cannot call __clone() method on objects - use 'clone $obj' instead");
+	if ((last_op->op2_type == IS_CONST) && (Z_TYPE(CONSTANT(last_op->op2.constant)) == IS_STRING) && (Z_STRLEN(CONSTANT(last_op->op2.constant)) == sizeof(ZEND_CLONE_FUNC_STR_NAME)-1)
+		&& !zend_binary_strcasecmp(Z_STRVAL(CONSTANT(last_op->op2.constant)), Z_STRLEN(CONSTANT(last_op->op2.constant)), ZEND_CLONE_FUNC_STR_NAME, sizeof(ZEND_CLONE_FUNC_STR_NAME)-1)) {
+		zend_error(E_COMPILE_ERROR, "Cannot call %s() method on objects - use 'clone $obj' instead", ZEND_CLONE_FUNC_STR_NAME);
 	}
 
 	if (last_op->opcode == ZEND_FETCH_OBJ_R) {
@@ -2448,8 +2473,8 @@ int zend_do_begin_class_member_function_call(znode *class_name, znode *method_na
 			zend_error(E_COMPILE_ERROR, "Method name must be a string");
 		}
 		lcname = zend_str_tolower_dup(Z_STRVAL(method_name->u.constant), Z_STRLEN(method_name->u.constant));
-		if ((sizeof(ZEND_CONSTRUCTOR_FUNC_NAME)-1) == Z_STRLEN(method_name->u.constant) &&
-		    memcmp(lcname, ZEND_CONSTRUCTOR_FUNC_NAME, sizeof(ZEND_CONSTRUCTOR_FUNC_NAME)-1) == 0) {
+		if ((sizeof(ZEND_CONSTRUCTOR_FUNC_STR_NAME)-1) == Z_STRLEN(method_name->u.constant) &&
+		    memcmp(lcname, ZEND_CONSTRUCTOR_FUNC_STR_NAME, sizeof(ZEND_CONSTRUCTOR_FUNC_STR_NAME)-1) == 0) {
 			zval_dtor(&method_name->u.constant);
 			method_name->op_type = IS_UNUSED;
 		}
@@ -3060,9 +3085,9 @@ static void do_inherit_parent_constructor(zend_class_entry *ce) /* {{{ */
 		return;
 	}
 
-	if (zend_hash_find(&ce->parent->function_table, ZEND_CONSTRUCTOR_FUNC_NAME, sizeof(ZEND_CONSTRUCTOR_FUNC_NAME), (void **)&function)==SUCCESS) {
+	if (zend_hash_find(&ce->parent->function_table, ZEND_CONSTRUCTOR_FUNC_STR_NAME, sizeof(ZEND_CONSTRUCTOR_FUNC_STR_NAME), (void **)&function)==SUCCESS) {
 		/* inherit parent's constructor */
-		zend_hash_update(&ce->function_table, ZEND_CONSTRUCTOR_FUNC_NAME, sizeof(ZEND_CONSTRUCTOR_FUNC_NAME), function, sizeof(zend_function), (void**)&new_function);
+		zend_hash_update(&ce->function_table, ZEND_CONSTRUCTOR_FUNC_STR_NAME, sizeof(ZEND_CONSTRUCTOR_FUNC_STR_NAME), function, sizeof(zend_function), (void**)&new_function);
 		function_add_ref(new_function);
 	} else {
 		/* Don't inherit the old style constructor if we already have the new style constructor */

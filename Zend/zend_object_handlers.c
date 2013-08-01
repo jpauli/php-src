@@ -155,7 +155,7 @@ static zval *zend_std_call_getter(zval *object, zval *member TSRMLS_DC) /* {{{ *
 
 	SEPARATE_ARG_IF_REF(member);
 
-	zend_call_method_with_1_params(&object, ce, &ce->__get, ZEND_GET_FUNC_NAME, &retval, member);
+	zend_call_method_with_1_params(&object, ce, &ce->__get, ZEND_GET_FUNC_STR_NAME, &retval, member);
 
 	zval_ptr_dtor(&member);
 
@@ -182,7 +182,7 @@ static int zend_std_call_setter(zval *object, zval *member, zval *value TSRMLS_D
 
 	   it should return whether the call was successfull or not
 	*/
-	zend_call_method_with_2_params(&object, ce, &ce->__set, ZEND_SET_FUNC_NAME, &retval, member, value);
+	zend_call_method_with_2_params(&object, ce, &ce->__set, ZEND_SET_FUNC_STR_NAME, &retval, member, value);
 
 	zval_ptr_dtor(&member);
 	zval_ptr_dtor(&value);
@@ -207,7 +207,7 @@ static void zend_std_call_unsetter(zval *object, zval *member TSRMLS_DC) /* {{{ 
 
 	SEPARATE_ARG_IF_REF(member);
 
-	zend_call_method_with_1_params(&object, ce, &ce->__unset, ZEND_UNSET_FUNC_NAME, NULL, member);
+	zend_call_method_with_1_params(&object, ce, &ce->__unset, ZEND_UNSET_FUNC_STR_NAME, NULL, member);
 
 	zval_ptr_dtor(&member);
 }
@@ -226,7 +226,7 @@ static zval *zend_std_call_issetter(zval *object, zval *member TSRMLS_DC) /* {{{
 
 	SEPARATE_ARG_IF_REF(member);
 
-	zend_call_method_with_1_params(&object, ce, &ce->__isset, ZEND_ISSET_FUNC_NAME, &retval, member);
+	zend_call_method_with_1_params(&object, ce, &ce->__isset, ZEND_ISSET_FUNC_STR_NAME, &retval, member);
 
 	zval_ptr_dtor(&member);
 
@@ -893,7 +893,7 @@ ZEND_API void zend_std_call_user_call(INTERNAL_FUNCTION_PARAMETERS) /* {{{ */
 	   array of method parameters
 
 	*/
-	zend_call_method_with_2_params(&this_ptr, ce, &ce->__call, ZEND_CALL_FUNC_NAME, &method_result_ptr, method_name_ptr, method_args_ptr);
+	zend_call_method_with_2_params(&this_ptr, ce, &ce->__call, ZEND_CALL_FUNC_STR_NAME, &method_result_ptr, method_name_ptr, method_args_ptr);
 
 	if (method_result_ptr) {
 		if (Z_ISREF_P(method_result_ptr) || Z_REFCOUNT_P(method_result_ptr) > 1) {
@@ -1098,7 +1098,7 @@ ZEND_API void zend_std_callstatic_user_call(INTERNAL_FUNCTION_PARAMETERS) /* {{{
 
 	if (UNEXPECTED(zend_copy_parameters_array(ZEND_NUM_ARGS(), method_args_ptr TSRMLS_CC) == FAILURE)) {
 		zval_dtor(method_args_ptr);
-		zend_error_noreturn(E_ERROR, "Cannot get arguments for " ZEND_CALLSTATIC_FUNC_NAME);
+		zend_error_noreturn(E_ERROR, "Cannot get arguments for " ZEND_CALLSTATIC_FUNC_STR_NAME);
 		RETURN_FALSE;
 	}
 
@@ -1110,7 +1110,7 @@ ZEND_API void zend_std_callstatic_user_call(INTERNAL_FUNCTION_PARAMETERS) /* {{{
 	   method name
 	   array of method parameters
 	*/
-	zend_call_method_with_2_params(NULL, ce, &ce->__callstatic, ZEND_CALLSTATIC_FUNC_NAME, &method_result_ptr, method_name_ptr, method_args_ptr);
+	zend_call_method_with_2_params(NULL, ce, &ce->__callstatic, ZEND_CALLSTATIC_FUNC_STR_NAME, &method_result_ptr, method_name_ptr, method_args_ptr);
 
 	if (method_result_ptr) {
 		if (Z_ISREF_P(method_result_ptr) || Z_REFCOUNT_P(method_result_ptr) > 1) {
@@ -1167,7 +1167,7 @@ ZEND_API zend_function *zend_std_get_static_method(zend_class_entry *ce, const c
 	if (function_name_strlen == ce->name_length && ce->constructor) {
 		lc_class_name = zend_str_tolower_dup(ce->name, ce->name_length);
 		/* Only change the method to the constructor if the constructor isn't called __construct
-		 * we check for __ so we can be binary safe for lowering, we should use ZEND_CONSTRUCTOR_FUNC_NAME
+		 * we check for __ so we can be binary safe for lowering, we should use ZEND_CONSTRUCTOR_FUNC_STR_NAME
 		 */
 		if (!memcmp(lc_class_name, lc_function_name, function_name_strlen) && memcmp(ce->constructor->common.function_name, "__", sizeof("__") - 1)) {
 			fbc = ce->constructor;
@@ -1605,7 +1605,7 @@ int zend_std_get_closure(zval *obj, zend_class_entry **ce_ptr, zend_function **f
 
 	ce = Z_OBJCE_P(obj);
 
-	if (zend_hash_find(&ce->function_table, ZEND_INVOKE_FUNC_NAME, sizeof(ZEND_INVOKE_FUNC_NAME), (void**)fptr_ptr) == FAILURE) {
+	if (zend_hash_find(&ce->function_table, ZEND_INVOKE_FUNC_STR_NAME, sizeof(ZEND_INVOKE_FUNC_STR_NAME), (void**)fptr_ptr) == FAILURE) {
 		return FAILURE;
 	}
 

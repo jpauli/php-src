@@ -120,7 +120,7 @@ ZEND_API void zend_objects_destroy_object(zend_object *object, zend_object_handl
 				EG(exception) = NULL;
 			}
 		}
-		zend_call_method_with_0_params(&obj, object->ce, &destructor, ZEND_DESTRUCTOR_FUNC_NAME, NULL);
+		zend_call_method_with_0_params(&obj, object->ce, &destructor, ZEND_DESTRUCTOR_FUNC_STR_NAME, NULL);
 		if (old_exception) {
 			if (EG(exception)) {
 				zend_exception_set_previous(EG(exception), old_exception TSRMLS_CC);
@@ -209,7 +209,7 @@ ZEND_API void zend_objects_clone_members(zend_object *new_object, zend_object_va
 		new_obj->value.obj = new_obj_val;
 		zval_copy_ctor(new_obj);
 
-		zend_call_method_with_0_params(&new_obj, old_object->ce, &old_object->ce->clone, ZEND_CLONE_FUNC_NAME, NULL);
+		zend_call_method_with_0_params(&new_obj, old_object->ce, &old_object->ce->clone, ZEND_CLONE_FUNC_STR_NAME, NULL);
 
 		zval_ptr_dtor(&new_obj);
 	}

@@ -1075,7 +1075,7 @@ ZEND_API int zend_lookup_class_ex(const char *name, int name_length, const zend_
 		return FAILURE;
 	}
 
-	ZVAL_STRINGL(&autoload_function, ZEND_AUTOLOAD_FUNC_NAME, sizeof(ZEND_AUTOLOAD_FUNC_NAME) - 1, 0);
+	ZVAL_STRINGL(&autoload_function, ZEND_AUTOLOAD_FUNC_STR_NAME, sizeof(ZEND_AUTOLOAD_FUNC_STR_NAME) - 1, 0);
 
 	ALLOC_ZVAL(class_name_ptr);
 	INIT_PZVAL(class_name_ptr);

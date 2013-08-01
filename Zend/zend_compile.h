@@ -845,18 +845,33 @@ int zend_add_literal(zend_op_array *op_array, const zval *zv TSRMLS_DC);
 
 END_EXTERN_C()
 
-#define ZEND_CLONE_FUNC_NAME		"__clone"
-#define ZEND_CONSTRUCTOR_FUNC_NAME	"__construct"
-#define ZEND_DESTRUCTOR_FUNC_NAME	"__destruct"
-#define ZEND_GET_FUNC_NAME          "__get"
-#define ZEND_SET_FUNC_NAME          "__set"
-#define ZEND_UNSET_FUNC_NAME        "__unset"
-#define ZEND_ISSET_FUNC_NAME        "__isset"
-#define ZEND_CALL_FUNC_NAME         "__call"
-#define ZEND_CALLSTATIC_FUNC_NAME   "__callstatic"
-#define ZEND_TOSTRING_FUNC_NAME     "__tostring"
-#define ZEND_AUTOLOAD_FUNC_NAME     "__autoload"
-#define ZEND_INVOKE_FUNC_NAME       "__invoke"
+#define ZEND_CLONE_FUNC_NAME		__clone
+#define ZEND_CONSTRUCTOR_FUNC_NAME	__construct
+#define ZEND_DESTRUCTOR_FUNC_NAME	__destruct
+#define ZEND_GET_FUNC_NAME          __get
+#define ZEND_SET_FUNC_NAME          __set
+#define ZEND_UNSET_FUNC_NAME        __unset
+#define ZEND_ISSET_FUNC_NAME        __isset
+#define ZEND_CALL_FUNC_NAME         __call
+#define ZEND_CALLSTATIC_FUNC_NAME   __callstatic
+#define ZEND_TOSTRING_FUNC_NAME     __tostring
+#define ZEND_AUTOLOAD_FUNC_NAME     __autoload
+#define ZEND_INVOKE_FUNC_NAME       __invoke
+
+#define ZEND_CLONE_FUNC_STR_NAME		ZEND_STRINGIFY_MACRO(ZEND_CLONE_FUNC_NAME)
+#define ZEND_CONSTRUCTOR_FUNC_STR_NAME	ZEND_STRINGIFY_MACRO(ZEND_CONSTRUCTOR_FUNC_NAME)
+#define ZEND_DESTRUCTOR_FUNC_STR_NAME	ZEND_STRINGIFY_MACRO(ZEND_DESTRUCTOR_FUNC_NAME)
+#define ZEND_GET_FUNC_STR_NAME          ZEND_STRINGIFY_MACRO(ZEND_GET_FUNC_NAME)
+#define ZEND_SET_FUNC_STR_NAME          ZEND_STRINGIFY_MACRO(ZEND_SET_FUNC_NAME)
+#define ZEND_UNSET_FUNC_STR_NAME        ZEND_STRINGIFY_MACRO(ZEND_UNSET_FUNC_NAME)
+#define ZEND_ISSET_FUNC_STR_NAME        ZEND_STRINGIFY_MACRO(ZEND_ISSET_FUNC_NAME)
+#define ZEND_CALL_FUNC_STR_NAME         ZEND_STRINGIFY_MACRO(ZEND_CALL_FUNC_NAME)
+#define ZEND_CALLSTATIC_FUNC_STR_NAME   ZEND_STRINGIFY_MACRO(ZEND_CALLSTATIC_FUNC_NAME)
+#define ZEND_TOSTRING_FUNC_STR_NAME     ZEND_STRINGIFY_MACRO(ZEND_TOSTRING_FUNC_NAME)
+#define ZEND_AUTOLOAD_FUNC_STR_NAME     ZEND_STRINGIFY_MACRO(ZEND_AUTOLOAD_FUNC_NAME)
+#define ZEND_INVOKE_FUNC_STR_NAME       ZEND_STRINGIFY_MACRO(ZEND_INVOKE_FUNC_NAME)
+
+#define ZEND_STRINGIFY_MACRO(s) #s
 
 /* The following constants may be combined in CG(compiler_options)
  * to change the default compiler behavior */

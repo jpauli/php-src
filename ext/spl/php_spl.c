@@ -712,9 +712,9 @@ PHP_FUNCTION(spl_autoload_functions)
 	}
 	
 	if (!EG(autoload_func)) {
-		if (zend_hash_find(EG(function_table), ZEND_AUTOLOAD_FUNC_NAME, sizeof(ZEND_AUTOLOAD_FUNC_NAME), (void **) &fptr) == SUCCESS) {
+		if (zend_hash_find(EG(function_table), ZEND_AUTOLOAD_FUNC_STR_NAME, sizeof(ZEND_AUTOLOAD_FUNC_STR_NAME), (void **) &fptr) == SUCCESS) {
 			array_init(return_value);
-			add_next_index_stringl(return_value, ZEND_AUTOLOAD_FUNC_NAME, sizeof(ZEND_AUTOLOAD_FUNC_NAME)-1, 1);
+			add_next_index_stringl(return_value, ZEND_AUTOLOAD_FUNC_STR_NAME, sizeof(ZEND_AUTOLOAD_FUNC_STR_NAME)-1, 1);
 			return;
 		}
 		RETURN_FALSE;
