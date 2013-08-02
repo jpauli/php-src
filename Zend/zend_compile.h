@@ -871,8 +871,8 @@ END_EXTERN_C()
 #define ZEND_AUTOLOAD_FUNC_STR_NAME     ZEND_STRINGIFY_MACRO(ZEND_AUTOLOAD_FUNC_NAME)
 #define ZEND_INVOKE_FUNC_STR_NAME       ZEND_STRINGIFY_MACRO(ZEND_INVOKE_FUNC_NAME)
 
-#define ZEND_STRINGIFY_MACRO(s) #s
-
+#define __TOSTRING_MACRO(s) #s
+#define ZEND_STRINGIFY_MACRO(x) __TOSTRING_MACRO(x)
 /* The following constants may be combined in CG(compiler_options)
  * to change the default compiler behavior */
 
