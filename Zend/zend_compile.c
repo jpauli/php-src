@@ -1661,7 +1661,12 @@ void zend_do_begin_function_declaration(znode *function_token, znode *function_n
 			ELSE_CHECK_METHOD_VISIBILITY(ZEND_ISSET_FUNC_NAME, DEFAULT_VISIBILITY_CHECK, VISIBILITY_ERROR_CAN_NOT)
 			ELSE_CHECK_METHOD_VISIBILITY(ZEND_TOSTRING_FUNC_NAME, DEFAULT_VISIBILITY_CHECK, VISIBILITY_ERROR_CAN_NOT)
 
-			else if (!(fn_flags & ZEND_ACC_STATIC)) {
+			else if ((name_len == sizeof(ZEND_INVOKE_FUNC_STR_NAME)-1) && (!memcmp(lcname, ZEND_INVOKE_FUNC_STR_NAME, sizeof(ZEND_INVOKE_FUNC_STR_NAME)-1))) {
+				if (fn_flags & ((ZEND_ACC_PPP_MASK | ZEND_ACC_STATIC) ^ ZEND_ACC_PUBLIC)) {
+					zend_error(E_WARNING, "The magic method %s() must have public visibility and cannot be static", ZEND_INVOKE_FUNC_STR_NAME);
+				}
+
+			} else if (!(fn_flags & ZEND_ACC_STATIC)) {
 				CG(active_op_array)->fn_flags |= ZEND_ACC_ALLOW_STATIC;
 			}
 			free_alloca(class_lcname, use_heap);
