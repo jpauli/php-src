@@ -98,11 +98,11 @@
 	} while (0)
 
 
-#define METHOD_VISIBILITY_ERROR(METHOD, VERB) zend_error(E_WARNING, "The magic method %s must have public visibility and %s be static", ZEND_STRINGIFY_MACRO(METHOD), VERB);
+#define METHOD_VISIBILITY_ERROR(METHOD, VERB) zend_error(E_WARNING, "The magic method %s() must have public visibility and %s be static", ZEND_STRINGIFY_MACRO(METHOD), VERB);
 
 #define DEFAULT_VISIBILITY_CHECK fn_flags & ((ZEND_ACC_PPP_MASK | ZEND_ACC_STATIC) ^ ZEND_ACC_PUBLIC)
 
-#define VISIBILITY_ERROR_CAN_NOT "can not"
+#define VISIBILITY_ERROR_CAN_NOT "cannot"
 #define VISIBILITY_ERROR_MUST "must"
 
 #define CHECK_VISIBILITY(METHOD, VISIBILITY_CHECK, VERB) if ((name_len == sizeof(ZEND_STRINGIFY_MACRO(METHOD))-1) && (!memcmp(lcname, (ZEND_STRINGIFY_MACRO(METHOD)), sizeof(ZEND_STRINGIFY_MACRO(METHOD))-1))) { \
