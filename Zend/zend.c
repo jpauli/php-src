@@ -1014,6 +1014,9 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
 	uint error_lineno;
 	zval *orig_user_error_handler;
 	zend_bool in_compilation;
+	zend_bool has_bracketed_namespaces;
+	zend_bool in_namespace;
+	zval *current_namespace;
 	zend_class_entry *saved_class_entry;
 	zend_stack bp_stack;
 	zend_stack function_call_stack;
@@ -1023,6 +1026,7 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
 	zend_stack declare_stack;
 	zend_stack list_stack;
 	zend_stack context_stack;
+	zend_stack namespace_decl_stack;
 	TSRMLS_FETCH();
 
 	/* Report about uncaught exception in case of fatal errors */
@@ -1183,6 +1187,10 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
 			in_compilation = CG(in_compilation);
 			if (in_compilation) {
 				saved_class_entry = CG(active_class_entry);
+				in_compilation = CG(in_compilation);
+				has_bracketed_namespaces = CG(has_bracketed_namespaces);
+				in_namespace = CG(in_namespace);
+				current_namespace = CG(current_namespace);
 				CG(active_class_entry) = NULL;
 				SAVE_STACK(bp_stack);
 				SAVE_STACK(function_call_stack);
@@ -1192,6 +1200,9 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
 				SAVE_STACK(declare_stack);
 				SAVE_STACK(list_stack);
 				SAVE_STACK(context_stack);
+				CG(has_bracketed_namespaces) = 0;
+				CG(in_namespace) = 0;
+				CG(current_namespace) = NULL;
 				CG(in_compilation) = 0;
 			}
 
@@ -1218,6 +1229,9 @@ ZEND_API void zend_error(int type, const char *format, ...) /* {{{ */
 				RESTORE_STACK(list_stack);
 				RESTORE_STACK(context_stack);
 				CG(in_compilation) = 1;
+				CG(has_bracketed_namespaces) = has_bracketed_namespaces;
+				CG(in_namespace) = in_namespace;
+				CG(current_namespace) = current_namespace;
 			}
 
 			if (!EG(user_error_handler)) {
