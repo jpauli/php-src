@@ -31,6 +31,20 @@ extern zend_module_entry tokenizer_module_entry;
 void tokenizer_register_constants(INIT_FUNC_ARGS);
 char *get_token_type_name(int token_type);
 
+#define TOKENIZER_SHOW_VALUE  1
+#define TOKENIZER_TOKEN_NAMES 2
+
+typedef struct _php_token {
+	struct {
+		char *token_name;
+		int token_num;
+	} tok;
+	struct {
+		char *str;
+		int str_len;
+		int line_num;
+	} data;
+} php_token;
 
 PHP_MINIT_FUNCTION(tokenizer);
 PHP_MINFO_FUNCTION(tokenizer);
