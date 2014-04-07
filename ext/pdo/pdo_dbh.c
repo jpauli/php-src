@@ -1403,6 +1403,42 @@ static int dbh_compare(zval *object1, zval *object2 TSRMLS_DC)
 
 static zend_object_handlers pdo_dbh_object_handlers;
 
+static HashTable *dbh_debug_info(zval *object, int *is_temp TSRMLS_CC)
+{
+	HashTable *return_value = NULL;
+	pdo_dbh_t *pdo = NULL;
+	zval *el = NULL;
+
+	pdo = zend_object_store_get_object((const zval*)object);
+	ALLOC_HASHTABLE(return_value);
+	zend_hash_init(return_value, 8, NULL, ZVAL_PTR_DTOR, 0);
+
+	ALLOC_INIT_ZVAL(el);
+	ZVAL_BOOL(el, (zend_bool)pdo->is_persistent);
+	zend_hash_add(return_value, "persistent", sizeof("persistent"), &el, sizeof(el), NULL);
+
+	ALLOC_INIT_ZVAL(el);
+	ZVAL_STRINGL(el, pdo->driver->driver_name, pdo->driver->driver_name_len, 1);
+	zend_hash_add(return_value, "driver_name", sizeof("driver_name"), &el, sizeof(el), NULL);
+
+	ALLOC_INIT_ZVAL(el);
+	ZVAL_LONG(el, pdo->auto_commit);
+	zend_hash_add(return_value, "auto_commit", sizeof("auto_commit"), &el, sizeof(el), NULL);
+
+	ALLOC_INIT_ZVAL(el);
+	ZVAL_STRINGL(el, pdo->data_source, pdo->data_source_len, 1);
+	zend_hash_add(return_value, "data_source", sizeof("data_source"), &el, sizeof(el), NULL);
+
+	/* @todo
+	 *
+	 * pdo->driver_data;
+	 */
+
+	*is_temp = 1;
+
+	return return_value;
+}
+
 void pdo_dbh_init(TSRMLS_D)
 {
 	zend_class_entry ce;
@@ -1414,6 +1450,7 @@ void pdo_dbh_init(TSRMLS_D)
 	memcpy(&pdo_dbh_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
 	pdo_dbh_object_handlers.get_method = dbh_method_get;
 	pdo_dbh_object_handlers.compare_objects = dbh_compare;
+	pdo_dbh_object_handlers.get_debug_info = dbh_debug_info;
 	
 	REGISTER_PDO_CLASS_CONST_LONG("PARAM_BOOL", (long)PDO_PARAM_BOOL);
 	REGISTER_PDO_CLASS_CONST_LONG("PARAM_NULL", (long)PDO_PARAM_NULL);
