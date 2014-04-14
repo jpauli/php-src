@@ -1409,9 +1409,16 @@ static HashTable *dbh_debug_info(zval *object, int *is_temp TSRMLS_CC)
 	pdo_dbh_t *pdo = NULL;
 	zval *el = NULL;
 
+	const char * const attributes_strings[] = {
+		"autocommit", "prefetch", "timeout", "errmode", "server_version", "client_version",
+		"server_info", "connection_status", "case", "cursor_name", "cursor", "oracle_nulls", "persistent",
+		"statement_class", "fetch_table_names", "fetch_catalog_names", "driver_name", "stringify_fetches",
+		"max_column_length", "default_fetch_mode", "emulate_prepares"
+	};
+
 	pdo = zend_object_store_get_object((const zval*)object);
 	ALLOC_HASHTABLE(return_value);
-	zend_hash_init(return_value, 8, NULL, ZVAL_PTR_DTOR, 0);
+	zend_hash_init(return_value, sizeof(attributes_strings)/sizeof(attributes_strings[0]), NULL, ZVAL_PTR_DTOR, 0);
 
 	ALLOC_INIT_ZVAL(el);
 	ZVAL_BOOL(el, (zend_bool)pdo->is_persistent);
@@ -1422,17 +1429,21 @@ static HashTable *dbh_debug_info(zval *object, int *is_temp TSRMLS_CC)
 	zend_hash_add(return_value, "driver_name", sizeof("driver_name"), &el, sizeof(el), NULL);
 
 	ALLOC_INIT_ZVAL(el);
-	ZVAL_LONG(el, pdo->auto_commit);
-	zend_hash_add(return_value, "auto_commit", sizeof("auto_commit"), &el, sizeof(el), NULL);
-
-	ALLOC_INIT_ZVAL(el);
 	ZVAL_STRINGL(el, pdo->data_source, pdo->data_source_len, 1);
-	zend_hash_add(return_value, "data_source", sizeof("data_source"), &el, sizeof(el), NULL);
+	zend_hash_add(return_value, "dsn_string", sizeof("dsn_string"), &el, sizeof(el), NULL);
 
-	/* @todo
-	 *
-	 * pdo->driver_data;
-	 */
+	if (pdo->methods->get_attribute) {
+		int attr;
+		zval *retval_attr = NULL;
+		for (attr= PDO_ATTR_AUTOCOMMIT; attr< PDO_ATTR_EMULATE_PREPARES; attr++) {
+			if (attr == PDO_ATTR_PERSISTENT || attr == PDO_ATTR_DRIVER_NAME) {
+				continue; /* We already got those info in global pdo, and the driver doesn't provide right data for them */
+			}
+			ALLOC_INIT_ZVAL(retval_attr);
+			pdo->methods->get_attribute(pdo, attr, retval_attr TSRMLS_CC);
+			zend_hash_add(return_value, attributes_strings[attr], strlen(attributes_strings[attr]) + 1, &retval_attr, sizeof(retval_attr), NULL);
+		}
+	}
 
 	*is_temp = 1;
 
