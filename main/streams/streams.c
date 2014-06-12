@@ -1387,6 +1387,11 @@ PHPAPI int _php_stream_truncate_set_size(php_stream *stream, size_t newsize TSRM
 	return php_stream_set_option(stream, PHP_STREAM_OPTION_TRUNCATE_API, PHP_STREAM_TRUNCATE_SET_SIZE, &newsize);
 }
 
+PHPAPI int _php_stream_fallocate_set_size(php_stream *stream, size_t newsize TSRMLS_DC)
+{
+	return php_stream_set_option(stream, PHP_STREAM_OPTION_FALLOCATE_API, PHP_STREAM_FALLOCATE_SET_SIZE, &newsize);
+}
+
 PHPAPI size_t _php_stream_passthru(php_stream * stream STREAMS_DC TSRMLS_DC)
 {
 	size_t bcount = 0;

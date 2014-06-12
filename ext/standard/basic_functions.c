@@ -3052,6 +3052,7 @@ const zend_function_entry basic_functions[] = { /* {{{ */
 	PHP_NAMED_FE(fopen,				php_if_fopen,							arginfo_fopen)
 	PHP_FE(fpassthru,														arginfo_fpassthru)
 	PHP_NAMED_FE(ftruncate,			php_if_ftruncate,						arginfo_ftruncate)
+	PHP_NAMED_FE(fallocate,			php_if_fallocate,						arginfo_ftruncate)
 	PHP_NAMED_FE(fstat,				php_if_fstat,							arginfo_fstat)
 	PHP_FE(fseek,															arginfo_fseek)
 	PHP_FE(ftell,															arginfo_ftell)

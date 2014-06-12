@@ -405,15 +405,22 @@ END_EXTERN_C()
 #define PHP_STREAM_OPTION_CRYPTO_API		8 /* see php_stream_transport.h */
 #define PHP_STREAM_OPTION_MMAP_API			9 /* see php_stream_mmap.h */
 #define PHP_STREAM_OPTION_TRUNCATE_API		10
+#define PHP_STREAM_OPTION_FALLOCATE_API		11
 
 #define PHP_STREAM_TRUNCATE_SUPPORTED	0
 #define PHP_STREAM_TRUNCATE_SET_SIZE	1	/* ptrparam is a pointer to a size_t */
 
+#define PHP_STREAM_FALLOCATE_SUPPORTED	2
+#define PHP_STREAM_FALLOCATE_SET_SIZE	3
+
 #define php_stream_truncate_supported(stream)	(_php_stream_set_option((stream), PHP_STREAM_OPTION_TRUNCATE_API, PHP_STREAM_TRUNCATE_SUPPORTED, NULL TSRMLS_CC) == PHP_STREAM_OPTION_RETURN_OK ? 1 : 0)
+#define php_stream_fallocate_supported(stream)	(_php_stream_set_option((stream), PHP_STREAM_OPTION_FALLOCATE_API, PHP_STREAM_FALLOCATE_SUPPORTED, NULL TSRMLS_CC) == PHP_STREAM_OPTION_RETURN_OK ? 1 : 0)
 
 BEGIN_EXTERN_C()
 PHPAPI int _php_stream_truncate_set_size(php_stream *stream, size_t newsize TSRMLS_DC);
 #define php_stream_truncate_set_size(stream, size)	_php_stream_truncate_set_size((stream), (size) TSRMLS_CC)
+PHPAPI int _php_stream_fallocate_set_size(php_stream *stream, size_t newsize TSRMLS_DC);
+#define php_stream_fallocate_set_size(stream, size)	_php_stream_fallocate_set_size((stream), (size) TSRMLS_CC)
 END_EXTERN_C()
 
 #define PHP_STREAM_OPTION_META_DATA_API		11 /* ptrparam is a zval* to which to add meta data information */

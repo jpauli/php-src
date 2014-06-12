@@ -1519,6 +1519,29 @@ PHP_NAMED_FUNCTION(php_if_ftruncate)
 }
 /* }}} */
 
+/* {{{ proto bool fallocate(resource fp, int size)
+   Allocate file to 'size' length */
+PHP_NAMED_FUNCTION(php_if_fallocate)
+{
+	zval *fp;
+	long size;
+	php_stream *stream;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &fp, &size) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	PHP_STREAM_TO_ZVAL(stream, &fp);
+
+	if (!php_stream_fallocate_supported(stream)) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Can't fallocate this stream!");
+		RETURN_FALSE;
+	}
+
+	RETURN_BOOL(0 == php_stream_fallocate_set_size(stream, size));
+}
+/* }}} */
+
 /* {{{ proto array fstat(resource fp)
    Stat() on a filehandle */
 PHP_NAMED_FUNCTION(php_if_fstat)

@@ -67,6 +67,7 @@ PHP_FUNCTION(realpath);
 PHP_FUNCTION(fnmatch);
 #endif
 PHP_NAMED_FUNCTION(php_if_ftruncate);
+PHP_NAMED_FUNCTION(php_if_fallocate);
 PHP_NAMED_FUNCTION(php_if_fstat);
 PHP_FUNCTION(sys_get_temp_dir);
 
