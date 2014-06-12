@@ -2877,14 +2877,15 @@ SPL_METHOD(SplFileObject, fread)
 FileFunction(fstat)
 /* }}} */
 
-/* {{{ proto bool SplFileObject::ftruncate(int size)
+/* {{{ proto bool SplFileObject::ftruncate(int size, bool use_fallocate)
    Truncate file to 'size' length */
 SPL_METHOD(SplFileObject, ftruncate)
 {
 	spl_filesystem_object *intern = (spl_filesystem_object*)zend_object_store_get_object(getThis() TSRMLS_CC);
 	long size;
+	zend_bool use_fallocate = 0;
 	
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &size) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|b", &size, &use_fallocate) == FAILURE) {
 		return;
 	}
 
@@ -2893,7 +2894,7 @@ SPL_METHOD(SplFileObject, ftruncate)
 		RETURN_FALSE;
 	}
 	
-	RETURN_BOOL(0 == php_stream_truncate_set_size(intern->u.file.stream, size));
+	RETURN_BOOL(0 == php_stream_truncate_set_size(intern->u.file.stream, size, use_fallocate));
 } /* }}} */
 
 /* {{{ proto void SplFileObject::seek(int line_pos)
@@ -2978,6 +2979,7 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_file_object_ftruncate, 0, 0, 1) 
 	ZEND_ARG_INFO(0, size)
+	ZEND_ARG_INFO(0, use_fallocate)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_file_object_seek, 0, 0, 1) 

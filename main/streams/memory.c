@@ -247,6 +247,7 @@ static int php_stream_memory_set_option(php_stream *stream, int option, int valu
 	
 	switch(option) {
 		case PHP_STREAM_OPTION_TRUNCATE_API:
+		case PHP_STREAM_OPTION_FALLOCATE_API:
 			switch (value) {
 				case PHP_STREAM_TRUNCATE_SUPPORTED:
 					return PHP_STREAM_OPTION_RETURN_OK;

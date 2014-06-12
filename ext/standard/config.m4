@@ -560,6 +560,30 @@ if test "$ac_cv_strptime_decl_fails" = "yes"; then
 fi
 
 dnl
+dnl Check for posix_fallocate
+dnl
+AC_CACHE_CHECK(whether posix_fallocate() is present, ac_cv_posix_fallocate_decl,[
+AC_TRY_RUN([
+#include <fcntl.h>
+#include <stdlib.h>
+
+int main(int argc, char **argv) {
+int fd;
+char file[] = "/tmp/php_compileXXXXXX";
+fd = mkstemp(file);
+posix_fallocate(fd, 0, 1024);
+return(0);
+}
+],[
+  ac_cv_posix_fallocate_decl=yes
+],[
+  ac_cv_posix_fallocate_decl=no
+])])
+if test "$ac_cv_posix_fallocate_decl" = "yes"; then
+  AC_DEFINE([HAVE_FALLOCATE], 1, [whether posix_fallocate is present])
+fi
+
+dnl
 dnl Check for i18n capabilities
 dnl
 AC_CHECK_HEADERS([wchar.h])

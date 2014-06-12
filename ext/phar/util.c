@@ -808,7 +808,7 @@ int phar_create_writeable_entry(phar_archive_data *phar, phar_entry_info *entry,
 {
 	if (entry->fp_type == PHAR_MOD) {
 		/* already newly created, truncate */
-		php_stream_truncate_set_size(entry->fp, 0);
+		php_stream_truncate_set_size(entry->fp, 0, 0);
 
 		entry->old_flags = entry->flags;
 		entry->is_modified = 1;

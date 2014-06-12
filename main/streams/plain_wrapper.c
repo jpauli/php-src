@@ -783,14 +783,25 @@ static int php_stdiop_set_option(php_stream *stream, int option, int value, void
 			return PHP_STREAM_OPTION_RETURN_NOTIMPL;
 
 		case PHP_STREAM_OPTION_TRUNCATE_API:
+		case PHP_STREAM_OPTION_FALLOCATE_API:
 			switch (value) {
 				case PHP_STREAM_TRUNCATE_SUPPORTED:
+					if (option == PHP_STREAM_OPTION_FALLOCATE_API) {
+#if HAVE_FALLOCATE
+						return PHP_STREAM_OPTION_RETURN_OK;
+#else
+						return PHP_STREAM_OPTION_RETURN_NOTIMPL;
+#endif
+					}
 					return fd == -1 ? PHP_STREAM_OPTION_RETURN_ERR : PHP_STREAM_OPTION_RETURN_OK;
 
 				case PHP_STREAM_TRUNCATE_SET_SIZE: {
 					ptrdiff_t new_size = *(ptrdiff_t*)ptrparam;
 					if (new_size < 0) {
 						return PHP_STREAM_OPTION_RETURN_ERR;
+					}
+					if (option == PHP_STREAM_OPTION_FALLOCATE_API) {
+						return posix_fallocate(fd, stream->position, new_size) == 0 ? PHP_STREAM_OPTION_RETURN_OK : PHP_STREAM_OPTION_RETURN_ERR;
 					}
 					return ftruncate(fd, new_size) == 0 ? PHP_STREAM_OPTION_RETURN_OK : PHP_STREAM_OPTION_RETURN_ERR;
 				}

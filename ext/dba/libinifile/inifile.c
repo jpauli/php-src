@@ -313,7 +313,7 @@ static int inifile_truncate(inifile *dba, size_t size TSRMLS_DC)
 {
 	int res;
 
-	if ((res=php_stream_truncate_set_size(dba->fp, size)) != 0) {
+	if ((res=php_stream_truncate_set_size(dba->fp, size, 0)) != 0) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Error in ftruncate: %d", res);
 		return FAILURE;
 	}

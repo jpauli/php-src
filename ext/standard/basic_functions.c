@@ -1173,6 +1173,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_ftruncate, 0)
 	ZEND_ARG_INFO(0, fp)
 	ZEND_ARG_INFO(0, size)
+	ZEND_ARG_INFO(0, use_fallocate)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO(arginfo_fstat, 0)

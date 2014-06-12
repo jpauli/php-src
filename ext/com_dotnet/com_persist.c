@@ -176,7 +176,7 @@ static HRESULT STDMETHODCALLTYPE stm_set_size(IStream *This, ULARGE_INTEGER libN
 	}
 	
 	if (php_stream_truncate_supported(stm->stream)) {
-		int ret = php_stream_truncate_set_size(stm->stream, (size_t)libNewSize.QuadPart);
+		int ret = php_stream_truncate_set_size(stm->stream, (size_t)libNewSize.QuadPart, 0);
 
 		if (ret == 0) {
 			return S_OK;

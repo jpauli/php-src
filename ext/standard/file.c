@@ -621,7 +621,7 @@ PHP_FUNCTION(file_put_contents)
 	}
 
 	if (mode[0] == 'c') {
-		php_stream_truncate_set_size(stream, 0);
+		php_stream_truncate_set_size(stream, 0, 0);
 	}
 
 	switch (Z_TYPE_P(data)) {
@@ -1503,8 +1503,9 @@ PHP_NAMED_FUNCTION(php_if_ftruncate)
 	zval *fp;
 	long size;
 	php_stream *stream;
+	zend_bool use_fallocate = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &fp, &size) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl|b", &fp, &size, &use_fallocate) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -1515,7 +1516,7 @@ PHP_NAMED_FUNCTION(php_if_ftruncate)
 		RETURN_FALSE;
 	}
 
-	RETURN_BOOL(0 == php_stream_truncate_set_size(stream, size));
+	RETURN_BOOL(0 == php_stream_truncate_set_size(stream, size, use_fallocate));
 }
 /* }}} */
 
