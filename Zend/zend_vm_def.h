@@ -2644,6 +2644,26 @@ ZEND_VM_HANDLER(59, ZEND_INIT_FCALL_BY_NAME, ANY, CONST|TMP|VAR|CV)
 		function_name = GET_OP2_ZVAL_PTR(BP_VAR_R);
 
 		if (EXPECTED(Z_TYPE_P(function_name) == IS_STRING)) {
+			const char *colon;
+			if ((colon = zend_memrchr(Z_STRVAL_P(function_name), ':', Z_STRLEN_P(function_name))) != NULL &&
+				colon > Z_STRVAL_P(function_name) &&
+				*(colon - 1) == ':') {
+				const char *cname = Z_STRVAL_P(function_name);
+				int cname_len     = colon - 1 - Z_STRVAL_P(function_name);
+				zend_class_entry *ce = zend_fetch_class_by_name(cname, cname_len, NULL, 0 TSRMLS_CC);
+				if (UNEXPECTED(ce == NULL)) {
+					CHECK_EXCEPTION();
+					ZEND_VM_NEXT_OPCODE();
+				}
+				call->called_scope = ce;
+				call->object = NULL;
+
+				if (ce->get_static_method) {
+					call->fbc = ce->get_static_method(ce, colon + 1, Z_STRLEN_P(function_name) - (cname_len + sizeof("::") - 1) TSRMLS_CC);
+				} else {
+					call->fbc = zend_std_get_static_method(ce, colon + 1, Z_STRLEN_P(function_name) - (cname_len + sizeof("::") - 1), NULL TSRMLS_CC);
+				}
+			}
 			function_name_strval = Z_STRVAL_P(function_name);
 			function_name_strlen = Z_STRLEN_P(function_name);
 			if (function_name_strval[0] == '\\') {
