@@ -2122,7 +2122,7 @@ static int php_cli_server_request_shutdown(php_cli_server *server, php_cli_serve
 static int php_cli_server_dispatch_router(php_cli_server *server, php_cli_server_client *client TSRMLS_DC) /* {{{ */
 {
 	int decline = 0;
-	zend_file_handle zfd;
+	zend_file_handle zfd, prepend_file, append_file, *prepend_file_p = NULL, *append_file_p = NULL;
 	char *old_cwd;
 
 	ALLOCA_FLAG(use_heap)
@@ -2136,8 +2136,30 @@ static int php_cli_server_dispatch_router(php_cli_server *server, php_cli_server
 	zfd.free_filename = 0;
 	zfd.opened_path = NULL;
 
+
+	if (PG(auto_prepend_file) && PG(auto_prepend_file)[0]) {
+		prepend_file.filename = PG(auto_prepend_file);
+		prepend_file.opened_path = NULL;
+		prepend_file.free_filename = 0;
+		prepend_file.type = ZEND_HANDLE_FILENAME;
+		prepend_file_p = &prepend_file;
+	}
+
+	if (PG(auto_append_file) && PG(auto_append_file)[0]) {
+		append_file.filename = PG(auto_append_file);
+		append_file.opened_path = NULL;
+		append_file.free_filename = 0;
+		append_file.type = ZEND_HANDLE_FILENAME;
+		append_file_p = &append_file;
+	}
+
 	zend_try {
 		zval *retval = NULL;
+		if (SUCCESS == zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, &retval, 1, prepend_file_p)) {
+			zval_ptr_dtor(&retval);
+			retval = NULL;
+		}
+
 		if (SUCCESS == zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, &retval, 1, &zfd)) {
 			if (retval) {
 				decline = Z_TYPE_P(retval) == IS_BOOL && !Z_LVAL_P(retval);
@@ -2145,6 +2167,11 @@ static int php_cli_server_dispatch_router(php_cli_server *server, php_cli_server
 			}
 		} else {
 			decline = 1;
+		}
+
+		if (SUCCESS == zend_execute_scripts(ZEND_REQUIRE TSRMLS_CC, &retval, 1, append_file_p)) {
+			zval_ptr_dtor(&retval);
+			retval = NULL;
 		}
 	} zend_end_try();
 
