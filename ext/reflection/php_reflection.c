@@ -1287,7 +1287,7 @@ static void reflection_function_factory(zend_function *function, zval *closure_o
 /* }}} */
 
 /* {{{ reflection_method_factory */
-static void reflection_method_factory(zend_class_entry *ce, zend_function *method, zval *closure_object, zval *object TSRMLS_DC)
+static void reflection_method_factory(zend_class_entry *ce, zend_hash_key *resolved_method_name, zend_function *method, zval *closure_object, zval *object TSRMLS_DC)
 {
 	reflection_object *intern;
 	zval *name;
@@ -1299,7 +1299,7 @@ static void reflection_method_factory(zend_class_entry *ce, zend_function *metho
 	MAKE_STD_ZVAL(name);
 	MAKE_STD_ZVAL(classname);
 	ZVAL_STRING(name, (method->common.scope && method->common.scope->trait_aliases)?
-			zend_resolve_method_name(ce, method) : method->common.function_name, 1);
+			zend_resolve_method_name(ce, method) : resolved_method_name ? (char *)resolved_method_name->arKey : method->common.function_name, 1);
 	ZVAL_STRINGL(classname, method->common.scope->name, method->common.scope->name_length, 1);
 	reflection_instantiate(reflection_method_ptr, object TSRMLS_CC);
 	intern = (reflection_object *) zend_object_store_get_object(object TSRMLS_CC);
@@ -2354,7 +2354,7 @@ ZEND_METHOD(reflection_parameter, getDeclaringFunction)
 	if (!param->fptr->common.scope) {
 		reflection_function_factory(_copy_function(param->fptr TSRMLS_CC), intern->obj, return_value TSRMLS_CC);
 	} else {
-		reflection_method_factory(param->fptr->common.scope, _copy_function(param->fptr TSRMLS_CC), intern->obj, return_value TSRMLS_CC);
+		reflection_method_factory(param->fptr->common.scope, NULL, _copy_function(param->fptr TSRMLS_CC), intern->obj, return_value TSRMLS_CC);
 	}
 }
 /* }}} */
@@ -3251,7 +3251,7 @@ ZEND_METHOD(reflection_method, getPrototype)
 		return;
 	}
 
-	reflection_method_factory(mptr->common.prototype->common.scope, mptr->common.prototype, NULL, return_value TSRMLS_CC);
+	reflection_method_factory(mptr->common.prototype->common.scope, NULL, mptr->common.prototype, NULL, return_value TSRMLS_CC);
 }
 /* }}} */
 
@@ -3646,7 +3646,7 @@ ZEND_METHOD(reflection_class, getConstructor)
 	GET_REFLECTION_OBJECT_PTR(ce);
 
 	if (ce->constructor) {
-		reflection_method_factory(ce, ce->constructor, NULL, return_value TSRMLS_CC);
+		reflection_method_factory(ce, NULL, ce->constructor, NULL, return_value TSRMLS_CC);
 	} else {
 		RETURN_NULL();
 	}
@@ -3705,18 +3705,18 @@ ZEND_METHOD(reflection_class, getMethod)
 	{
 		/* don't assign closure_object since we only reflect the invoke handler
 		   method and not the closure definition itself */
-		reflection_method_factory(ce, mptr, NULL, return_value TSRMLS_CC);
+		reflection_method_factory(ce, NULL, mptr, NULL, return_value TSRMLS_CC);
 		efree(lc_name);
 	} else if (ce == zend_ce_closure && !intern->obj && (name_len == sizeof(ZEND_INVOKE_FUNC_NAME)-1)
 		&& memcmp(lc_name, ZEND_INVOKE_FUNC_NAME, sizeof(ZEND_INVOKE_FUNC_NAME)-1) == 0
 		&& object_init_ex(&obj_tmp, ce) == SUCCESS && (mptr = zend_get_closure_invoke_method(&obj_tmp TSRMLS_CC)) != NULL) {
 		/* don't assign closure_object since we only reflect the invoke handler
 		   method and not the closure definition itself */
-		reflection_method_factory(ce, mptr, NULL, return_value TSRMLS_CC);
+		reflection_method_factory(ce, NULL, mptr, NULL, return_value TSRMLS_CC);
 		zval_dtor(&obj_tmp);
 		efree(lc_name);
 	} else if (zend_hash_find(&ce->function_table, lc_name, name_len + 1, (void**) &mptr) == SUCCESS) {
-		reflection_method_factory(ce, mptr, NULL, return_value TSRMLS_CC);
+		reflection_method_factory(ce, NULL, mptr, NULL, return_value TSRMLS_CC);
 		efree(lc_name);
 	} else {
 		efree(lc_name);
@@ -3728,7 +3728,7 @@ ZEND_METHOD(reflection_class, getMethod)
 /* }}} */
 
 /* {{{ _addmethod */
-static void _addmethod(zend_function *mptr, zend_class_entry *ce, zval *retval, long filter, zval *obj TSRMLS_DC)
+static void _addmethod(zend_function *mptr, zend_hash_key *hash_key, zend_class_entry *ce, zval *retval, long filter, zval *obj TSRMLS_DC)
 {
 	zval *method;
 	uint len = strlen(mptr->common.function_name);
@@ -3745,7 +3745,7 @@ static void _addmethod(zend_function *mptr, zend_class_entry *ce, zval *retval, 
 		/* don't assign closure_object since we only reflect the invoke handler
 		   method and not the closure definition itself, even if we have a
 		   closure */
-		reflection_method_factory(ce, mptr, NULL, method TSRMLS_CC);
+		reflection_method_factory(ce, hash_key, mptr, NULL, method TSRMLS_CC);
 		add_next_index_zval(retval, method);
 	}
 }
@@ -3759,7 +3759,7 @@ static int _addmethod_va(zend_function *mptr TSRMLS_DC, int num_args, va_list ar
 	long filter = va_arg(args, long);
 	zval *obj = va_arg(args, zval *);
 
-	_addmethod(mptr, ce, retval, filter, obj TSRMLS_CC);
+	_addmethod(mptr, hash_key, ce, retval, filter, obj TSRMLS_CC);
 	return ZEND_HASH_APPLY_KEEP;
 }
 /* }}} */
@@ -3790,7 +3790,7 @@ ZEND_METHOD(reflection_class, getMethods)
 	if (intern->obj && instanceof_function(ce, zend_ce_closure TSRMLS_CC)) {
 		zend_function *closure = zend_get_closure_invoke_method(intern->obj TSRMLS_CC);
 		if (closure) {
-			_addmethod(closure, ce, return_value, filter, intern->obj TSRMLS_CC);
+			_addmethod(closure, NULL, ce, return_value, filter, intern->obj TSRMLS_CC);
 			_free_function(closure TSRMLS_CC);
 		}
 	}
