@@ -2003,10 +2003,16 @@ ZEND_VM_HELPER(zend_do_fcall_common_helper, ANY, ANY)
 		EG(active_op_array) = &fbc->op_array;
 		EG(return_value_ptr_ptr) = NULL;
 		if (RETURN_VALUE_USED(opline)) {
+			zend_uint i;
+			void **p = EX(function_state).arguments - num_args;
 			ret->var.ptr = NULL;
 			EG(return_value_ptr_ptr) = &ret->var.ptr;
 			ret->var.ptr_ptr = &ret->var.ptr;
 			ret->var.fcall_returned_reference = (fbc->common.fn_flags & ZEND_ACC_RETURN_REFERENCE) != 0;
+
+			for (i = 0; i < num_args; ++i, ++p) {
+				zend_verify_arg_type(fbc, i + 1, (zval *) *p, 0, NULL TSRMLS_CC);
+			}
 		}
 
 		if (UNEXPECTED((EG(active_op_array)->fn_flags & ZEND_ACC_GENERATOR) != 0)) {
