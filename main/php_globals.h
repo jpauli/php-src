@@ -86,6 +86,7 @@ struct _php_core_globals {
 	char *extension_dir;
 	char *php_binary;
 	char *sys_temp_dir;
+	char *cur_temp_dir;
 
 	char *upload_tmp_dir;
 	long upload_max_filesize;

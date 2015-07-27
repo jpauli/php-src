@@ -175,14 +175,11 @@ static int php_do_open_temporary_file(const char *path, const char *pfx, char **
 }
 /* }}} */
 
-/* Cache the chosen temporary directory. */
-static char* temporary_directory;
-
 PHPAPI void php_shutdown_temporary_directory(void)
 {
-	if (temporary_directory) {
-		efree(temporary_directory);
-		temporary_directory = NULL;
+	if (PG(cur_temp_dir)) {
+		efree(PG(cur_temp_dir));
+		PG(cur_temp_dir) = NULL;
 	}
 }
 
@@ -192,8 +189,8 @@ PHPAPI void php_shutdown_temporary_directory(void)
 PHPAPI const char* php_get_temporary_directory(TSRMLS_D)
 {
 	/* Did we determine the temporary directory already? */
-	if (temporary_directory) {
-		return temporary_directory;
+	if (PG(cur_temp_dir)) {
+		return PG(cur_temp_dir);
 	}
 
 	/* Is there a temporary directory "sys_temp_dir" in .ini defined? */
@@ -202,11 +199,11 @@ PHPAPI const char* php_get_temporary_directory(TSRMLS_D)
 		if (sys_temp_dir) {
 			int len = strlen(sys_temp_dir);
 			if (len >= 2 && sys_temp_dir[len - 1] == DEFAULT_SLASH) {
-				temporary_directory = estrndup(sys_temp_dir, len - 1);
-				return temporary_directory;
+				PG(cur_temp_dir) = estrndup(sys_temp_dir, len - 1);
+				return PG(cur_temp_dir);
 			} else if (len >= 1 && sys_temp_dir[len - 1] != DEFAULT_SLASH) {
-				temporary_directory = estrndup(sys_temp_dir, len);
-				return temporary_directory;
+				PG(cur_temp_dir) = estrndup(sys_temp_dir, len);
+				return PG(cur_temp_dir);
 			}
 		}
 	}
@@ -222,11 +219,11 @@ PHPAPI const char* php_get_temporary_directory(TSRMLS_D)
 		DWORD len = GetTempPath(sizeof(sTemp),sTemp);
 		assert(0 < len);  /* should *never* fail! */
 		if (sTemp[len - 1] == DEFAULT_SLASH) {
-			temporary_directory = estrndup(sTemp, len - 1);
+			PG(cur_temp_dir) = estrndup(sTemp, len - 1);
 		} else {
-			temporary_directory = estrndup(sTemp, len);
+			PG(cur_temp_dir) = estrndup(sTemp, len);
 		}
-		return temporary_directory;
+		return PG(cur_temp_dir);
 	}
 #else
 	/* On Unix use the (usual) TMPDIR environment variable. */
@@ -236,24 +233,24 @@ PHPAPI const char* php_get_temporary_directory(TSRMLS_D)
 			int len = strlen(s);
 
 			if (s[len - 1] == DEFAULT_SLASH) {
-				temporary_directory = estrndup(s, len - 1);
+				PG(cur_temp_dir) = estrndup(s, len - 1);
 			} else {
-				temporary_directory = estrndup(s, len);
+				PG(cur_temp_dir) = estrndup(s, len);
 			}
 
-			return temporary_directory;
+			return PG(cur_temp_dir);
 		}
 	}
 #ifdef P_tmpdir
 	/* Use the standard default temporary directory. */
 	if (P_tmpdir) {
-		temporary_directory = estrdup(P_tmpdir);
-		return temporary_directory;
+		PG(cur_temp_dir) = estrdup(P_tmpdir);
+		return PG(cur_temp_dir);
 	}
 #endif
 	/* Shouldn't ever(!) end up here ... last ditch default. */
-	temporary_directory = estrndup("/tmp", sizeof("/tmp"));
-	return temporary_directory;
+	PG(cur_temp_dir) = estrndup("/tmp", sizeof("/tmp"));
+	return PG(cur_temp_dir);
 #endif
 }
 
