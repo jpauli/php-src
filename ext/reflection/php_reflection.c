@@ -3218,7 +3218,7 @@ static void reflection_method_invoke(INTERNAL_FUNCTION_PARAMETERS, int variadic)
 	int i, argc = 0, result;
 	zend_fcall_info fci;
 	zend_fcall_info_cache fcc;
-	zend_class_entry *obj_ce;
+	zend_class_entry *obj_ce, *new_class;
 	zval *param_array;
 
 	METHOD_NOTSTATIC(reflection_method_ptr);
@@ -3244,11 +3244,11 @@ static void reflection_method_invoke(INTERNAL_FUNCTION_PARAMETERS, int variadic)
 	}
 
 	if (variadic) {
-		if (zend_parse_parameters(ZEND_NUM_ARGS(), "o!*", &object, &params, &argc) == FAILURE) {
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "z!*", &object, &params, &argc) == FAILURE) {
 			return;
 		}
 	} else {
-		if (zend_parse_parameters(ZEND_NUM_ARGS(), "o!a", &object, &param_array) == FAILURE) {
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "z!a", &object, &param_array) == FAILURE) {
 			return;
 		}
 
@@ -3269,18 +3269,33 @@ static void reflection_method_invoke(INTERNAL_FUNCTION_PARAMETERS, int variadic)
 	 * Else, we verify that the given object is an instance of the class.
 	 */
 	if (mptr->common.fn_flags & ZEND_ACC_STATIC) {
+		zval *new_func;
+		if (Z_TYPE_P(object) != IS_STRING) {
+			zend_throw_exception_ex(reflection_exception_ptr, 0,
+				"A string is required as first parameter when trying to invoke static method %s::%s()",
+				ZSTR_VAL(mptr->common.scope->name), ZSTR_VAL(mptr->common.function_name));
+			return;
+		}
+		new_class = zend_lookup_class(Z_STR_P(object));
+		if (!new_class) {
+			zend_throw_exception_ex(reflection_exception_ptr, 0, "Class %s not found", Z_STRVAL_P(object));
+			return;
+		}
+		if ((new_func = zend_hash_find(&new_class->function_table, mptr->common.function_name)) != NULL) {
+			mptr = Z_FUNC_P(new_func);
+		}
 		object = NULL;
 		obj_ce = mptr->common.scope;
 	} else {
-		if (!object) {
+		if (!object || Z_TYPE_P(object) != IS_OBJECT) {
 			zend_throw_exception_ex(reflection_exception_ptr, 0,
 				"Trying to invoke non static method %s::%s() without an object",
 				ZSTR_VAL(mptr->common.scope->name), ZSTR_VAL(mptr->common.function_name));
 			return;
 		}
 
-		obj_ce = Z_OBJCE_P(object);
-
+		obj_ce       = Z_OBJCE_P(object);
+		new_class = intern->ce;
 		if (!instanceof_function(obj_ce, mptr->common.scope)) {
 			if (!variadic) {
 				efree(params);
