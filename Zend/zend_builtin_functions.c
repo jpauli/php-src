@@ -64,6 +64,7 @@ static ZEND_FUNCTION(crash);
 static ZEND_FUNCTION(get_included_files);
 static ZEND_FUNCTION(is_subclass_of);
 static ZEND_FUNCTION(is_a);
+static ZEND_FUNCTION(is_strict_types);
 static ZEND_FUNCTION(get_class_vars);
 static ZEND_FUNCTION(get_object_vars);
 static ZEND_FUNCTION(get_class_methods);
@@ -305,6 +306,7 @@ static const zend_function_entry builtin_functions[] = { /* {{{ */
 	ZEND_FE(get_declared_traits, 		arginfo_zend__void)
 	ZEND_FE(get_declared_interfaces, 	arginfo_zend__void)
 	ZEND_FE(get_defined_functions, 		arginfo_zend__void)
+	ZEND_FE(is_strict_types,		arginfo_zend__void)
 	ZEND_FE(get_defined_vars,		arginfo_zend__void)
 	ZEND_FE(create_function,		arginfo_create_function)
 	ZEND_FE(get_resource_type,		arginfo_get_resource_type)
@@ -430,6 +432,20 @@ ZEND_FUNCTION(func_num_args)
 	} else {
 		zend_error(E_WARNING, "func_num_args():  Called from the global scope - no function context");
 		RETURN_LONG(-1);
+	}
+}
+/* }}} */
+
+/* {{{ proto bool is_strict_types(void)
+   Returns true if the current file has set strict_types=1 */
+ZEND_FUNCTION(is_strict_types)
+{
+	zend_execute_data *ex = EX(prev_execute_data);
+
+	if (ZEND_ARG_USES_STRICT_TYPES()) {
+		RETURN_TRUE;
+	} else {
+		RETURN_FALSE;
 	}
 }
 /* }}} */

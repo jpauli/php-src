@@ -1792,6 +1792,22 @@ ZEND_METHOD(reflection_function, isUserDefined)
 }
 /* }}} */
 
+/* {{{ proto public bool ReflectionFunction::isStrictlyTyped()
+   Returns whether this function has been declared in a
+   strict_types file */
+ZEND_METHOD(reflection_function, isStrictlyTyped)
+{
+	reflection_object *intern;
+	zend_function *fptr;
+
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+	GET_REFLECTION_OBJECT_PTR(fptr);
+	RETURN_BOOL(fptr->common.fn_flags & ZEND_ACC_STRICT_TYPES);
+}
+/* }}} */
+
 /* {{{ proto public bool ReflectionFunction::isDisabled()
    Returns whether this function has been disabled or not */
 ZEND_METHOD(reflection_function, isDisabled)
@@ -4540,6 +4556,16 @@ ZEND_METHOD(reflection_class, isFinal)
 {
 	_class_check_flag(INTERNAL_FUNCTION_PARAM_PASSTHRU, ZEND_ACC_FINAL);
 }
+
+/* {{{ proto public bool ReflectionClass::isStrictlyTyped()
+   Returns whether this class has been declared in a
+   strict_types file */
+ZEND_METHOD(reflection_class, isStrictlyTyped)
+{
+	_class_check_flag(INTERNAL_FUNCTION_PARAM_PASSTHRU, ZEND_ACC_STRICT_TYPES);
+}
+/* }}} */
+
 /* }}} */
 
 /* {{{ proto public bool ReflectionClass::isAbstract()
@@ -6112,6 +6138,7 @@ static const zend_function_entry reflection_function_abstract_functions[] = {
 	ZEND_ME(reflection_function, isUserDefined, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_function, isGenerator, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_function, isVariadic, arginfo_reflection__void, 0)
+	ZEND_ME(reflection_function, isStrictlyTyped, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_function, getClosureThis, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_function, getClosureScopeClass, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_function, getDocComment, arginfo_reflection__void, 0)
@@ -6335,6 +6362,7 @@ static const zend_function_entry reflection_class_functions[] = {
 	ZEND_ME(reflection_class, setStaticPropertyValue, arginfo_reflection_class_setStaticPropertyValue, 0)
 	ZEND_ME(reflection_class, getDefaultProperties, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_class, isIterateable, arginfo_reflection__void, 0)
+	ZEND_ME(reflection_class, isStrictlyTyped, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_class, implementsInterface, arginfo_reflection_class_implementsInterface, 0)
 	ZEND_ME(reflection_class, getExtension, arginfo_reflection__void, 0)
 	ZEND_ME(reflection_class, getExtensionName, arginfo_reflection__void, 0)

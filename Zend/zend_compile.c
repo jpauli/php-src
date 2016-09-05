@@ -2950,6 +2950,19 @@ static zend_bool zend_args_contain_unpack(zend_ast_list *args) /* {{{ */
 }
 /* }}} */
 
+int zend_compile_func_is_strict_types(znode *result, zend_ast_list *args) /* {{{ */
+{
+	if (args->children) {
+		zend_error_noreturn(E_COMPILE_ERROR, "function is_strict_types() should not take arguments");
+		return FAILURE;
+	}
+
+	ZVAL_BOOL(&result->u.constant, CG(active_op_array)->fn_flags & ZEND_ACC_STRICT_TYPES);
+
+	return SUCCESS;
+}
+/* }}} */
+
 int zend_compile_func_strlen(znode *result, zend_ast_list *args) /* {{{ */
 {
 	znode arg_node;
@@ -3201,6 +3214,8 @@ int zend_try_compile_special_func(znode *result, zend_string *lcname, zend_ast_l
 
 	if (zend_string_equals_literal(lcname, "strlen")) {
 		return zend_compile_func_strlen(result, args);
+	} else if (zend_string_equals_literal(lcname, "is_strict_types")) {
+		return zend_compile_func_is_strict_types(result, args);
 	} else if (zend_string_equals_literal(lcname, "is_null")) {
 		return zend_compile_func_typecheck(result, args, IS_NULL);
 	} else if (zend_string_equals_literal(lcname, "is_bool")) {
@@ -5287,6 +5302,8 @@ void zend_compile_class_decl(zend_ast *ast) /* {{{ */
 	ce->name = name;
 	zend_initialize_class_data(ce, 1);
 
+	/* We propagate ZEND_ACC_STRICT_TYPES for Reflection only actually */
+	ce->ce_flags |= (CG(active_op_array)->fn_flags & ZEND_ACC_STRICT_TYPES);
 	ce->ce_flags |= decl->flags;
 	ce->info.user.filename = zend_get_compiled_filename();
 	ce->info.user.line_start = decl->start_lineno;
