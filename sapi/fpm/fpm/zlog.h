@@ -7,8 +7,6 @@
 
 #include <stdarg.h>
 
-#define zlog(flags,...) zlog_ex(__func__, __LINE__, flags, __VA_ARGS__)
-
 struct timeval;
 
 void zlog_set_external_logger(void (*logger)(int, char *, size_t));
@@ -19,9 +17,7 @@ void zlog_set_launched(void);
 
 size_t zlog_print_time(struct timeval *tv, char *timebuf, size_t timebuf_len);
 
-void vzlog(const char *function, int line, int flags, const char *fmt, va_list args);
-void zlog_ex(const char *function, int line, int flags, const char *fmt, ...)
-		__attribute__ ((format(printf,4,5)));
+void zlog(int flags, ...);
 
 #ifdef HAVE_SYSLOG_H
 extern const int syslog_priorities[];

@@ -465,7 +465,7 @@ void fcgi_log(int type, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	vzlog("", 0, type, fmt, args);
+	zlog(type, fmt, args);
 	va_end(args);
 }
 /* }}} */

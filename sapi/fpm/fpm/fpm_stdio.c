@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stddef.h>
 
 #include "php_syslog.h"
 
@@ -109,15 +110,13 @@ int fpm_stdio_init_child(struct fpm_worker_pool_s *wp) /* {{{ */
 
 static void fpm_stdio_child_said(struct fpm_event_s *ev, short which, void *arg) /* {{{ */
 {
-	static const int max_buf_size = 1024;
+	static const int default_read_size = 1024;
 	int fd = ev->fd;
-	char buf[max_buf_size];
+	char *buf, *bbuf, *nl;
+	size_t buf_size;
 	struct fpm_child_s *child;
 	int is_stdout;
 	struct fpm_event_s *event;
-	int fifo_in = 1, fifo_out = 1;
-	int is_last_message = 0;
-	int in_buf = 0;
 	int res;
 
 	if (!arg) {
@@ -131,76 +130,56 @@ static void fpm_stdio_child_said(struct fpm_event_s *ev, short which, void *arg)
 		event = &child->ev_stderr;
 	}
 
-	while (fifo_in || fifo_out) {
-		if (fifo_in) {
-			res = read(fd, buf + in_buf, max_buf_size - 1 - in_buf);
-			if (res <= 0) { /* no data */
-				fifo_in = 0;
-				if (res < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-					/* just no more data ready */
-				} else { /* error or pipe is closed */
+	bbuf = buf = calloc(1, default_read_size);
+	buf_size   = default_read_size;
 
-					if (res < 0) { /* error */
-						zlog(ZLOG_SYSERROR, "unable to read what child say");
-					}
-
-					fpm_event_del(event);
-					is_last_message = 1;
-
-					if (is_stdout) {
-						close(child->fd_stdout);
-						child->fd_stdout = -1;
-					} else {
-						close(child->fd_stderr);
-						child->fd_stderr = -1;
-					}
-				}
+	while (1) {
+		res = read(fd, buf, default_read_size - 1);
+		if (res == default_read_size - 1) {
+			ptrdiff_t offset = buf - bbuf;
+			buf_size *= 2;
+			bbuf      = realloc(bbuf, buf_size);
+			buf       += (default_read_size - 1 + offset);
+		} else if (res < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				/* no more data */
+				break;
 			} else {
-				in_buf += res;
+				/* error or pipe is closed */
+				zlog(ZLOG_SYSERROR, "unable to read what child says");
+
+				fpm_event_del(event);
+
+				if (is_stdout) {
+					close(child->fd_stdout);
+					child->fd_stdout = -1;
+				} else {
+					close(child->fd_stderr);
+					child->fd_stderr = -1;
+				}
+				break;
 			}
-		}
-
-		if (fifo_out) {
-			if (in_buf == 0) {
-				fifo_out = 0;
-			} else {
-				char *nl;
-				int should_print = 0;
-				buf[in_buf] = '\0';
-
-				/* FIXME: there might be binary data */
-
-				/* we should print if no more space in the buffer */
-				if (in_buf == max_buf_size - 1) {
-					should_print = 1;
-				}
-
-				/* we should print if no more data to come */
-				if (!fifo_in) {
-					should_print = 1;
-				}
-
-				nl = strchr(buf, '\n');
-				if (nl || should_print) {
-
-					if (nl) {
-						*nl = '\0';
-					}
-
-					zlog(ZLOG_WARNING, "[pool %s] child %d said into %s: \"%s\"%s", child->wp->config->name,
-					  (int) child->pid, is_stdout ? "stdout" : "stderr", buf, is_last_message ? ", pipe is closed" : "");
-
-					if (nl) {
-						int out_buf = 1 + nl - buf;
-						memmove(buf, buf + out_buf, in_buf - out_buf);
-						in_buf -= out_buf;
-					} else {
-						in_buf = 0;
-					}
-				}
-			}
+		} else {
+			/* Finished reading */
+			break;
 		}
 	}
+	bbuf[buf_size -1] = '\0';
+	buf = bbuf;
+
+	/* Something to write ? */
+	if (res > 0) {
+		while ((nl = strchr(buf, '\n'))) {
+			*nl = '\0';
+			zlog(ZLOG_WARNING, "[pool %s] %s", child->wp->config->name, buf);
+			buf = nl + 1;
+		}
+		if (bbuf == buf) {
+			zlog(ZLOG_WARNING, "[pool %s] %s", child->wp->config->name, buf);
+		}
+	}
+
+	free(bbuf);
 }
 /* }}} */
 
