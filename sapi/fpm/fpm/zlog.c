@@ -101,24 +101,30 @@ int zlog_set_level(int new_value) /* {{{ */
 void vzlog(const char *function, int line, int flags, const char *fmt, va_list args) /* {{{ */
 {
 	struct timeval tv;
-	char buf[MAX_LINE_LENGTH];
-	const size_t buf_size = MAX_LINE_LENGTH;
-	size_t len = 0;
-	int truncated = 0;
+	char tmp_buf[MAX_LINE_LENGTH];
+	int tmp_buf_size = MAX_LINE_LENGTH;
+	int tmp_buf_len  = 0;
+
+	char *final_buf;
+	int final_buf_len;
+
+	char *fmt_buf;
+	int fmt_buf_len;
+
 	int saved_errno;
 
 	if (external_logger) {
 		va_list ap;
 		va_copy(ap, args);
-		len = vsnprintf(buf, buf_size, fmt, ap);
+		fmt_buf_len = vasprintf(&fmt_buf, fmt, ap);
 		va_end(ap);
-		if (len >= buf_size) {
-			memcpy(buf + buf_size - sizeof("..."), "...", sizeof("...") - 1);
-			len = buf_size - 1;
+		if (fmt_buf_len < 0) {
+			external_logger(flags & ZLOG_LEVEL_MASK, "Can't allocate memory for zlog()", strlen("Can't allocate memory for zlog()"));
+		} else {
+			external_logger(flags & ZLOG_LEVEL_MASK, fmt_buf, fmt_buf_len);
+			fmt_buf_len = 0;
+			free(fmt_buf);
 		}
-		external_logger(flags & ZLOG_LEVEL_MASK, buf, len);
-		len = 0;
-		memset(buf, '\0', buf_size);
 	}
 
 	if ((flags & ZLOG_LEVEL_MASK) < zlog_level) {
@@ -128,70 +134,61 @@ void vzlog(const char *function, int line, int flags, const char *fmt, va_list a
 	saved_errno = errno;
 #ifdef HAVE_SYSLOG_H
 	if (zlog_fd == ZLOG_SYSLOG /* && !fpm_globals.is_child */) {
-		len = 0;
 		if (zlog_level == ZLOG_DEBUG) {
-			len += snprintf(buf, buf_size, "[%s] %s(), line %d: ", level_names[flags & ZLOG_LEVEL_MASK], function, line);
+			tmp_buf_len += snprintf(tmp_buf, tmp_buf_size, "[%s] %s(), line %d: ", level_names[flags & ZLOG_LEVEL_MASK], function, line);
 		} else {
-			len += snprintf(buf, buf_size, "[%s] ", level_names[flags & ZLOG_LEVEL_MASK]);
+			tmp_buf_len += snprintf(tmp_buf, tmp_buf_size, "[%s] ", level_names[flags & ZLOG_LEVEL_MASK]);
 		}
 	} else
 #endif
 	{
 		if (!fpm_globals.is_child) {
 			gettimeofday(&tv, 0);
-			len = zlog_print_time(&tv, buf, buf_size);
+			tmp_buf_len = zlog_print_time(&tv, tmp_buf, tmp_buf_size);
 		}
 		if (zlog_level == ZLOG_DEBUG) {
 			if (!fpm_globals.is_child) {
-				len += snprintf(buf + len, buf_size - len, "%s: pid %d, %s(), line %d: ", level_names[flags & ZLOG_LEVEL_MASK], getpid(), function, line);
+				tmp_buf_len += snprintf(tmp_buf + tmp_buf_len, tmp_buf_size - tmp_buf_len, "%s: pid %d, %s(), line %d: ", level_names[flags & ZLOG_LEVEL_MASK], getpid(), function, line);
 			} else {
-				len += snprintf(buf + len, buf_size - len, "%s: %s(), line %d: ", level_names[flags & ZLOG_LEVEL_MASK], function, line);
+				tmp_buf_len += snprintf(tmp_buf + tmp_buf_len, tmp_buf_size - tmp_buf_len, "%s: %s(), line %d: ", level_names[flags & ZLOG_LEVEL_MASK], function, line);
 			}
 		} else {
-			len += snprintf(buf + len, buf_size - len, "%s: ", level_names[flags & ZLOG_LEVEL_MASK]);
+			tmp_buf_len += snprintf(tmp_buf + tmp_buf_len, tmp_buf_size - tmp_buf_len, "%s: ", level_names[flags & ZLOG_LEVEL_MASK]);
 		}
 	}
 
-	if (len > buf_size - 1) {
-		truncated = 1;
+	if (flags & ZLOG_HAVE_ERRNO) {
+		tmp_buf_len += snprintf(tmp_buf + tmp_buf_len, tmp_buf_size - tmp_buf_len, ": %s (%d)", strerror(saved_errno), saved_errno);
 	}
 
-	if (!truncated) {
-		len += vsnprintf(buf + len, buf_size - len, fmt, args);
-		if (len >= buf_size) {
-			truncated = 1;
-		}
-	}
+	fmt_buf_len = vasprintf(&fmt_buf, fmt, args);
+	if (fmt_buf_len < 0) {
+		final_buf     = strndup("Can't allocate memory for zlog()", strlen("Can't allocate memory for zlog()"));
+		final_buf_len = strlen("Can't allocate memory for zlog()");
+	} else {
+		final_buf_len = tmp_buf_len + fmt_buf_len + 2;
 
-	if (!truncated) {
-		if (flags & ZLOG_HAVE_ERRNO) {
-			len += snprintf(buf + len, buf_size - len, ": %s (%d)", strerror(saved_errno), saved_errno);
-			if (len >= buf_size) {
-				truncated = 1;
-			}
-		}
-	}
-
-	if (truncated) {
-		memcpy(buf + buf_size - sizeof("..."), "...", sizeof("...") - 1);
-		len = buf_size - 1;
+		final_buf = calloc(1, final_buf_len);
+		memcpy(final_buf, tmp_buf, tmp_buf_len);
+		memcpy(final_buf + tmp_buf_len, fmt_buf, fmt_buf_len);
+		free(fmt_buf);
 	}
 
 #ifdef HAVE_SYSLOG_H
 	if (zlog_fd == ZLOG_SYSLOG) {
-		buf[len] = '\0';
-		php_syslog(syslog_priorities[zlog_level], "%s", buf);
-		buf[len++] = '\n';
+		php_syslog(syslog_priorities[zlog_level], "%s", final_buf);
 	} else
 #endif
 	{
-		buf[len++] = '\n';
-		write(zlog_fd > -1 ? zlog_fd : STDERR_FILENO, buf, len);
+		final_buf[final_buf_len - 2] = '\n';
+		write(zlog_fd > -1 ? zlog_fd : STDERR_FILENO, final_buf, final_buf_len);
 	}
 
 	if (zlog_fd != STDERR_FILENO && zlog_fd != -1 && !launched && (flags & ZLOG_LEVEL_MASK) >= ZLOG_NOTICE) {
-		write(STDERR_FILENO, buf, len);
+		write(STDERR_FILENO, final_buf, final_buf_len);
 	}
+
+	free(final_buf);
 }
 /* }}} */
 

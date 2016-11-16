@@ -141,7 +141,7 @@ static void fpm_stdio_child_said(struct fpm_event_s *ev, short which, void *arg)
 				} else { /* error or pipe is closed */
 
 					if (res < 0) { /* error */
-						zlog(ZLOG_SYSERROR, "unable to read what child say");
+						zlog(ZLOG_SYSERROR, "unable to read what child says");
 					}
 
 					fpm_event_del(event);
