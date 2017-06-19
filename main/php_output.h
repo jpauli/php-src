@@ -158,6 +158,8 @@ PHPAPI ZEND_EXTERN_MODULE_GLOBALS(output)
 /* convenience macros */
 #define PHPWRITE(str, str_len)		php_output_write((str), (str_len))
 #define PHPWRITE_H(str, str_len)	php_output_write_unbuffered((str), (str_len))
+#define PHPSTRWRITE(str)			php_output_write(ZSTR_VAL(str), ZSTR_LEN(str))
+#define PHPSTRWRITE_H(str)			php_output_write_unbuffered(ZSTR_VAL(str), ZSTR_LEN(str))
 
 #define PUTC(c)						php_output_write((const char *) &(c), 1)
 #define PUTC_H(c)					php_output_write_unbuffered((const char *) &(c), 1)

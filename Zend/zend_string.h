@@ -293,6 +293,33 @@ static zend_always_inline void zend_string_release(zend_string *s)
 	}
 }
 
+static zend_always_inline zend_string *zend_string_concat_buf(const zend_string *s1, const char *buf, size_t len, int persistent)
+{
+	zend_string *s;
+
+	ZEND_ASSERT(ZSTR_LEN(s1));
+	ZEND_ASSERT(len);
+	ZEND_ASSERT(ZSTR_VAL(s1)[ZSTR_LEN(s1)] == 0);
+
+	s = zend_string_alloc(ZSTR_LEN(s1) + len, persistent);
+	memcpy(ZSTR_VAL(s), ZSTR_VAL(s1), ZSTR_LEN(s1));
+	memcpy(ZSTR_VAL(s) + ZSTR_LEN(s1), buf, len);
+	ZSTR_VAL(s)[ZSTR_LEN(s)] = '\0';
+
+	return s;
+}
+
+static zend_always_inline zend_string *zend_string_concat(const zend_string * s1, const zend_string * s2, int persistent)
+{
+	zend_string *s;
+
+	ZEND_ASSERT(ZSTR_LEN(s1));
+	ZEND_ASSERT(ZSTR_LEN(s2));
+	ZEND_ASSERT(ZSTR_VAL(s1)[ZSTR_LEN(s1)] == 0);
+	ZEND_ASSERT(ZSTR_VAL(s2)[ZSTR_LEN(s2)] == 0);
+
+	return zend_string_concat_buf(s1, ZSTR_VAL(s2), ZSTR_LEN(s2), persistent);
+}
 
 static zend_always_inline zend_bool zend_string_equals(zend_string *s1, zend_string *s2)
 {

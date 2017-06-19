@@ -613,6 +613,24 @@ static void xbuf_format_converter(void *xbuf, zend_bool is_char, const char *fmt
 					break;
 
 
+				case 'S': {
+					zend_string *zs;
+					zs = va_arg(ap, zend_string *);
+					if (zs && ZSTR_VAL(zs)) {
+						s = ZSTR_VAL(zs);
+						if (!adjust_precision) {
+							s_len = ZSTR_LEN(zs);
+						} else {
+							MAX(ZSTR_LEN(zs), precision);
+						}
+					} else {
+						s = S_NULL;
+						s_len = S_NULL_LEN;
+					}
+					pad_char = ' ';
+					break;
+				}
+
 				case 'f':
 				case 'F':
 				case 'e':

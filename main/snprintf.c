@@ -1005,6 +1005,22 @@ static int format_converter(register buffy * odp, const char *fmt, va_list ap) /
 					pad_char = ' ';
 					break;
 
+				case 'S': {
+					zend_string *zs;
+					zs = va_arg(ap, zend_string *);
+					if (zs && ZSTR_VAL(zs)) {
+						s     = ZSTR_VAL(zs);
+						s_len = ZSTR_LEN(zs);
+						if (adjust_precision && (size_t)precision < s_len) {
+							s_len = precision;
+						}
+					} else {
+						s = S_NULL;
+						s_len = S_NULL_LEN;
+					}
+					pad_char = ' ';
+					break;
+				}
 
 				case 'f':
 				case 'F':
